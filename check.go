@@ -1,6 +1,7 @@
 package gollector
 
 import (
+	"sync"
 	"time"
 )
 
@@ -10,6 +11,7 @@ type Check struct {
 
 	SuppressAlerts bool
 	Meta           map[string]string
+	Handlers       []Handler
 
 	LastCheck  *time.Time
 	LastResult *Result
@@ -25,13 +27,33 @@ func (c *Check) IsDue() bool {
 	return c.DueAt().Compare(time.Now()) <= 0
 }
 
-func (c *Check) Execute() (Result, error) {
+func (c *Check) Execute() error {
 	result, err := c.Command.Run()
+
+	if c.Handlers != nil {
+		// run c and result through handler mutations in order, one-by-one
+		for _, h := range c.Handlers {
+			h.Mutate(c, &result)
+		}
+
+		// now that mutations are finished, launch process handlers into goroutines
+		var wg sync.WaitGroup
+		wg.Add(len(c.Handlers))
+		for _, h := range c.Handlers {
+			go func(h Handler) {
+				defer wg.Done()
+
+				h.Process(*c, result)
+			}(h)
+		}
+		wg.Wait()
+	}
 
 	t := time.Now()
 	c.LastCheck = &t
+	c.LastResult = &result
 
-	return result, err
+	return err
 }
 
 type Command interface {
@@ -79,8 +101,10 @@ type ResultMetric struct {
 	Value string
 }
 
+// Handler mutates and/or processes a Check and it's latest result data
+// Process() does not mutate any data, only read
 type Handler interface {
-	Mutate(check Check, result *Result)
+	Mutate(check *Check, result *Result)
 	Process(check Check, result Result)
 }
 

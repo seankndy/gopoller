@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/seankndy/gollector"
 	"github.com/seankndy/gollector/command"
+	"github.com/seankndy/gollector/handler"
 	"os"
 	"os/signal"
 	"syscall"
@@ -69,6 +70,9 @@ func main() {
 			PacketLossCritThreshold: 95,
 			AvgRttWarnThreshold:     30,
 			AvgRttCritThreshold:     50,
+		},
+		Handlers: []gollector.Handler{
+			handler.DummyHandler{},
 		},
 		LastCheck:  nil,
 		LastResult: nil,

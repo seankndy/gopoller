@@ -66,12 +66,9 @@ func (s *Server) Run() {
 					<-runningLimiter
 				}()
 
-				result, err := check.Execute()
-				if err != nil {
+				if err := check.Execute(); err != nil {
 					fmt.Printf("failed to execute check: %v\n", err)
 				}
-
-				fmt.Println(result)
 			}()
 		}
 	}
