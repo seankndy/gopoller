@@ -62,10 +62,7 @@ func (s *Server) Run() {
 
 			go func() {
 				defer func() {
-					if check != nil {
-						s.checkQueue.Enqueue(*check)
-					}
-
+					s.checkQueue.Enqueue(*check)
 					<-runningLimiter
 				}()
 
