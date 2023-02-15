@@ -4,22 +4,38 @@ import (
 	"fmt"
 	probing "github.com/prometheus-community/pro-bing"
 	"github.com/seankndy/gollector"
+	"strconv"
 	"time"
 )
 
-type PingCommand struct{}
+type PingCommand struct {
+	gollector.BaseCommand
+}
 
-func (c PingCommand) Run(check gollector.Check) (gollector.Result, error) {
-	pinger, err := probing.NewPinger("8.8.8.8")
+func (c PingCommand) Run(attributes map[string]string) (gollector.Result, error) {
+	attributes = c.MergeAttributes(map[string]string{
+		"ip":       "127.0.0.1",
+		"count":    "5",
+		"interval": "150",
+	}, attributes)
+
+	pinger, err := probing.NewPinger(attributes["ip"])
 	if err != nil {
-		return gollector.Result{
-			State:      gollector.StateUnknown,
-			ReasonCode: "",
-			Metrics:    nil,
-		}, err
+		return gollector.MakeUnknownResult("CMD_FAILURE"), err
 	}
-	pinger.Interval = 250 * time.Millisecond
-	pinger.Count = 5
+
+	v, err := strconv.Atoi(attributes["interval"])
+	if err != nil {
+		return gollector.MakeUnknownResult("CMD_FAILURE"), nil
+	}
+	pinger.Interval = time.Duration(v) * time.Millisecond
+
+	v, err = strconv.Atoi(attributes["count"])
+	if err != nil {
+		return gollector.MakeUnknownResult("CMD_FAILURE"), nil
+	}
+	pinger.Count = v
+
 	pinger.Run()
 	stats := pinger.Statistics()
 

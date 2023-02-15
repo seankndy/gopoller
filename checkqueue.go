@@ -79,25 +79,7 @@ func (m *memoryCheckQueue) Dequeue() *Check {
 
 	return &check
 }
-
-/*
-	func (m *memoryCheckQueue) Peek() *Check {
-		m.mu.RLock()
-		defer m.mu.RUnlock()
-
-		_, ok := m.checks[m.minPriority]
-		if !ok {
-			return nil
-		}
-
-		check := m.checks[m.minPriority][0]
-		if !check.IsDue() {
-			return &check
-		}
-
-		return nil
-	}
-*/
+git
 func (m *memoryCheckQueue) Flush() {
 	m.mu.Lock()
 	defer m.mu.Unlock()

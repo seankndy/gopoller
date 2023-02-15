@@ -25,11 +25,13 @@ func NewServer(config ServerConfig, checkQueue CheckQueue) *Server {
 func (s *Server) Run() {
 	s.stop = make(chan struct{})
 
-	pendingChecks := make(chan *Check, s.maxRunningChecks)
 	runningLimiter := make(chan struct{}, s.maxRunningChecks)
+	defer close(runningLimiter)
 
-	// populate pendingCheck channel from queue indefinitely
-	go func() {
+	pendingChecks := make(chan *Check, s.maxRunningChecks)
+	go func() { // populate pendingCheck channel from queue indefinitely
+		defer close(pendingChecks)
+
 		for loop := true; loop; {
 			select {
 			case _, ok := <-s.stop:
@@ -46,8 +48,6 @@ func (s *Server) Run() {
 				time.Sleep(250 * time.Millisecond)
 			}
 		}
-
-		close(pendingChecks)
 	}()
 
 	for loop := true; loop; {
@@ -69,14 +69,12 @@ func (s *Server) Run() {
 				result, err := check.Execute()
 				if err != nil {
 					fmt.Printf("failed to execute check: %v\n", err)
-					return
 				}
 
 				fmt.Println(result)
 			}()
 		}
 	}
-	close(runningLimiter)
 
 	// only get here when server stopped
 	// put any pending checks back into the queue

@@ -8,8 +8,8 @@ import (
 
 type DummyCommand struct{}
 
-func (c DummyCommand) Run(check gollector.Check) (gollector.Result, error) {
-	fmt.Printf("I am a dummy command running check %v\n", check)
+func (c DummyCommand) Run(attributes map[string]string) (gollector.Result, error) {
+	fmt.Printf("I am a dummy command running check w/ attributes %v\n", attributes)
 
 	time.Sleep(1 * time.Second)
 

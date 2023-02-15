@@ -22,61 +22,63 @@ func main() {
 	checkQueue.Enqueue(gollector.Check{
 		Schedule:       &tenSecondPeriodic,
 		SuppressAlerts: false,
-		Meta: map[string]string{
+		Meta:           nil,
+		Command:        command.DummyCommand{},
+		CommandAttributes: map[string]string{
 			"check1": "check1",
 		},
-		Command:           command.DummyCommand{},
-		CommandAttributes: nil,
-		LastCheck:         nil,
-		LastResult:        nil,
+		LastCheck:  nil,
+		LastResult: nil,
 	})
 
 	checkQueue.Enqueue(gollector.Check{
 		Schedule:       &tenSecondPeriodic,
 		SuppressAlerts: false,
-		Meta: map[string]string{
+		Meta:           nil,
+		Command:        command.DummyCommand{},
+		CommandAttributes: map[string]string{
 			"check2": "check2",
 		},
-		Command:           command.DummyCommand{},
-		CommandAttributes: nil,
-		LastCheck:         nil,
-		LastResult:        nil,
+		LastCheck:  nil,
+		LastResult: nil,
 	})
 
 	checkQueue.Enqueue(gollector.Check{
 		Schedule:       &tenSecondPeriodic,
 		SuppressAlerts: false,
-		Meta: map[string]string{
+		Meta:           nil,
+		Command:        command.DummyCommand{},
+		CommandAttributes: map[string]string{
 			"check3": "check3",
 		},
-		Command:           command.DummyCommand{},
-		CommandAttributes: nil,
-		LastCheck:         nil,
-		LastResult:        nil,
+		LastCheck:  nil,
+		LastResult: nil,
 	})
 
 	checkQueue.Enqueue(gollector.Check{
 		Schedule:       &tenSecondPeriodic,
 		SuppressAlerts: false,
-		Meta: map[string]string{
+		Meta:           nil,
+		Command:        command.DummyCommand{},
+		CommandAttributes: map[string]string{
 			"check4": "check4",
 		},
-		Command:           command.DummyCommand{},
-		CommandAttributes: nil,
-		LastCheck:         nil,
-		LastResult:        nil,
+		LastCheck:  nil,
+		LastResult: nil,
 	})
 
 	checkQueue.Enqueue(gollector.Check{
 		Schedule:       &tenSecondPeriodic,
 		SuppressAlerts: false,
-		Meta: map[string]string{
-			"check5": "check5",
+		Meta:           nil,
+		Command:        command.PingCommand{},
+		CommandAttributes: map[string]string{
+			"ip":       "209.193.82.100",
+			"interval": "100",
+			"count":    "10",
 		},
-		Command:           command.PingCommand{},
-		CommandAttributes: nil,
-		LastCheck:         nil,
-		LastResult:        nil,
+		LastCheck:  nil,
+		LastResult: nil,
 	})
 
 	server.Run()

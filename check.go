@@ -28,7 +28,7 @@ func (c *Check) IsDue() bool {
 }
 
 func (c *Check) Execute() (Result, error) {
-	result, err := c.Command.Run(*c)
+	result, err := c.Command.Run(c.CommandAttributes)
 
 	t := time.Now()
 	c.LastCheck = &t
@@ -37,7 +37,20 @@ func (c *Check) Execute() (Result, error) {
 }
 
 type Command interface {
-	Run(check Check) (Result, error)
+	Run(attributes map[string]string) (Result, error)
+}
+
+type BaseCommand struct{}
+
+func (c BaseCommand) MergeAttributes(defaults map[string]string, actual map[string]string) map[string]string {
+	combined := make(map[string]string)
+	for k, v := range defaults {
+		combined[k] = v
+	}
+	for k, v := range actual {
+		combined[k] = v
+	}
+	return combined
 }
 
 type ResultState uint8
@@ -66,6 +79,14 @@ type Result struct {
 	State      ResultState
 	ReasonCode string
 	Metrics    []ResultMetric
+}
+
+func MakeUnknownResult(reasonCode string) Result {
+	return Result{
+		State:      StateUnknown,
+		ReasonCode: reasonCode,
+		Metrics:    nil,
+	}
 }
 
 type ResultMetric struct {
