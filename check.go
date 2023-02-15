@@ -6,12 +6,10 @@ import (
 
 type Check struct {
 	Schedule CheckSchedule
+	Command  Command
 
 	SuppressAlerts bool
 	Meta           map[string]string
-
-	Command           Command
-	CommandAttributes map[string]string
 
 	LastCheck  *time.Time
 	LastResult *Result
@@ -28,7 +26,7 @@ func (c *Check) IsDue() bool {
 }
 
 func (c *Check) Execute() (Result, error) {
-	result, err := c.Command.Run(c.CommandAttributes)
+	result, err := c.Command.Run()
 
 	t := time.Now()
 	c.LastCheck = &t
@@ -37,20 +35,7 @@ func (c *Check) Execute() (Result, error) {
 }
 
 type Command interface {
-	Run(attributes map[string]string) (Result, error)
-}
-
-type BaseCommand struct{}
-
-func (c BaseCommand) MergeAttributes(defaults map[string]string, actual map[string]string) map[string]string {
-	combined := make(map[string]string)
-	for k, v := range defaults {
-		combined[k] = v
-	}
-	for k, v := range actual {
-		combined[k] = v
-	}
-	return combined
+	Run() (Result, error)
 }
 
 type ResultState uint8

@@ -79,7 +79,7 @@ func (m *memoryCheckQueue) Dequeue() *Check {
 
 	return &check
 }
-git
+
 func (m *memoryCheckQueue) Flush() {
 	m.mu.Lock()
 	defer m.mu.Unlock()

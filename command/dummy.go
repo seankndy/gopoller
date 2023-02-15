@@ -6,10 +6,12 @@ import (
 	"time"
 )
 
-type DummyCommand struct{}
+type DummyCommand struct {
+	Message string
+}
 
-func (c DummyCommand) Run(attributes map[string]string) (gollector.Result, error) {
-	fmt.Printf("I am a dummy command running check w/ attributes %v\n", attributes)
+func (c DummyCommand) Run() (gollector.Result, error) {
+	fmt.Printf("I am a dummy command: %v\n", c.Message)
 
 	time.Sleep(1 * time.Second)
 

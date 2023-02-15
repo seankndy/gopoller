@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 func main() {
@@ -23,59 +24,51 @@ func main() {
 		Schedule:       &tenSecondPeriodic,
 		SuppressAlerts: false,
 		Meta:           nil,
-		Command:        command.DummyCommand{},
-		CommandAttributes: map[string]string{
-			"check1": "check1",
-		},
-		LastCheck:  nil,
-		LastResult: nil,
+		Command:        command.DummyCommand{Message: "check 1"},
+		LastCheck:      nil,
+		LastResult:     nil,
 	})
 
 	checkQueue.Enqueue(gollector.Check{
 		Schedule:       &tenSecondPeriodic,
 		SuppressAlerts: false,
 		Meta:           nil,
-		Command:        command.DummyCommand{},
-		CommandAttributes: map[string]string{
-			"check2": "check2",
-		},
-		LastCheck:  nil,
-		LastResult: nil,
+		Command:        command.DummyCommand{Message: "check 2"},
+		LastCheck:      nil,
+		LastResult:     nil,
 	})
 
 	checkQueue.Enqueue(gollector.Check{
 		Schedule:       &tenSecondPeriodic,
 		SuppressAlerts: false,
 		Meta:           nil,
-		Command:        command.DummyCommand{},
-		CommandAttributes: map[string]string{
-			"check3": "check3",
-		},
-		LastCheck:  nil,
-		LastResult: nil,
+		Command:        command.DummyCommand{Message: "check 3"},
+		LastCheck:      nil,
+		LastResult:     nil,
 	})
 
 	checkQueue.Enqueue(gollector.Check{
 		Schedule:       &tenSecondPeriodic,
 		SuppressAlerts: false,
 		Meta:           nil,
-		Command:        command.DummyCommand{},
-		CommandAttributes: map[string]string{
-			"check4": "check4",
-		},
-		LastCheck:  nil,
-		LastResult: nil,
+		Command:        command.DummyCommand{Message: "check 4"},
+		LastCheck:      nil,
+		LastResult:     nil,
 	})
 
 	checkQueue.Enqueue(gollector.Check{
 		Schedule:       &tenSecondPeriodic,
 		SuppressAlerts: false,
 		Meta:           nil,
-		Command:        command.PingCommand{},
-		CommandAttributes: map[string]string{
-			"ip":       "209.193.82.100",
-			"interval": "100",
-			"count":    "10",
+		Command: command.PingCommand{
+			Ip:                      "8.8.8.8",
+			Count:                   5,
+			Interval:                100 * time.Millisecond,
+			Size:                    64,
+			PacketLossWarnThreshold: 90,
+			PacketLossCritThreshold: 95,
+			AvgRttWarnThreshold:     30,
+			AvgRttCritThreshold:     50,
 		},
 		LastCheck:  nil,
 		LastResult: nil,
