@@ -12,7 +12,7 @@ import (
 func main() {
 	checkQueue := gollector.NewMemoryCheckQueue()
 	server := gollector.NewServer(gollector.ServerConfig{
-		MaxRunningChecks: 500,
+		MaxRunningChecks: 3,
 	}, checkQueue)
 
 	handleSignals(server, checkQueue)
@@ -73,7 +73,7 @@ func main() {
 		Meta: map[string]string{
 			"check5": "check5",
 		},
-		Command:           command.DummyCommand{},
+		Command:           command.PingCommand{},
 		CommandAttributes: nil,
 		LastCheck:         nil,
 		LastResult:        nil,

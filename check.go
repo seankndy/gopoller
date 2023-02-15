@@ -37,7 +37,6 @@ func (c *Check) Execute() (Result, error) {
 }
 
 type Command interface {
-	Name() string
 	Run(check Check) (Result, error)
 }
 
