@@ -42,9 +42,9 @@ func (s *Server) Run() {
 
 			if check := s.checkQueue.Dequeue(); check != nil {
 				pendingChecks <- check
+			} else {
+				time.Sleep(250 * time.Millisecond)
 			}
-
-			time.Sleep(250 * time.Millisecond)
 		}
 
 		close(pendingChecks)
