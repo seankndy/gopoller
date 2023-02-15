@@ -12,25 +12,12 @@ import (
 func main() {
 	checkQueue := gollector.NewMemoryCheckQueue()
 	server := gollector.NewServer(gollector.ServerConfig{
-		MaxRunningChecks: 2,
+		MaxRunningChecks: 500,
 	}, checkQueue)
 
-	handleSignals(server)
+	handleSignals(server, checkQueue)
 
 	tenSecondPeriodic := gollector.PeriodicSchedule{Interval: 10}
-
-	check := gollector.Check{
-		Schedule:       &tenSecondPeriodic,
-		SuppressAlerts: false,
-		Meta: map[string]string{
-			"check1": "check1",
-		},
-		Command:           command.DummyCommand{},
-		CommandAttributes: nil,
-		LastCheck:         nil,
-		LastResult:        nil,
-	}
-	fmt.Println(check.IsDue())
 
 	checkQueue.Enqueue(gollector.Check{
 		Schedule:       &tenSecondPeriodic,
@@ -68,12 +55,36 @@ func main() {
 		LastResult:        nil,
 	})
 
+	checkQueue.Enqueue(gollector.Check{
+		Schedule:       &tenSecondPeriodic,
+		SuppressAlerts: false,
+		Meta: map[string]string{
+			"check4": "check4",
+		},
+		Command:           command.DummyCommand{},
+		CommandAttributes: nil,
+		LastCheck:         nil,
+		LastResult:        nil,
+	})
+
+	checkQueue.Enqueue(gollector.Check{
+		Schedule:       &tenSecondPeriodic,
+		SuppressAlerts: false,
+		Meta: map[string]string{
+			"check5": "check5",
+		},
+		Command:           command.DummyCommand{},
+		CommandAttributes: nil,
+		LastCheck:         nil,
+		LastResult:        nil,
+	})
+
 	server.Run()
 
 	fmt.Println("Exiting.")
 }
 
-func handleSignals(server *gollector.Server) {
+func handleSignals(server *gollector.Server, checkQueue gollector.CheckQueue) {
 	go func() {
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGINT)
@@ -88,6 +99,8 @@ func handleSignals(server *gollector.Server) {
 			case sig := <-sigCh:
 				if sig == syscall.SIGINT {
 					server.Stop()
+					// now flush the queue prior to shut down
+					checkQueue.Flush()
 					return
 				}
 			}

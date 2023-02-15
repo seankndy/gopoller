@@ -6,10 +6,9 @@ import (
 )
 
 type Server struct {
-	checkQueue     CheckQueue
-	runningLimiter chan struct{}
-	pendingChecks  chan *Check
-	stop           chan struct{}
+	checkQueue       CheckQueue
+	maxRunningChecks uint64
+	stop             chan struct{}
 }
 
 type ServerConfig struct {
@@ -18,14 +17,17 @@ type ServerConfig struct {
 
 func NewServer(config ServerConfig, checkQueue CheckQueue) *Server {
 	return &Server{
-		checkQueue:     checkQueue,
-		runningLimiter: make(chan struct{}, config.MaxRunningChecks),
-		pendingChecks:  make(chan *Check, config.MaxRunningChecks),
-		stop:           make(chan struct{}),
+		checkQueue:       checkQueue,
+		maxRunningChecks: config.MaxRunningChecks,
 	}
 }
 
 func (s *Server) Run() {
+	s.stop = make(chan struct{})
+
+	pendingChecks := make(chan *Check, s.maxRunningChecks)
+	runningLimiter := make(chan struct{}, s.maxRunningChecks)
+
 	// populate pendingCheck channel from queue indefinitely
 	go func() {
 		for loop := true; loop; {
@@ -38,21 +40,14 @@ func (s *Server) Run() {
 			default:
 			}
 
-			check, err := s.checkQueue.Dequeue()
-			if err != nil {
-				fmt.Printf("failed to dequeue check: %v\n", err)
-				time.Sleep(1000 * time.Millisecond)
-				continue
-			}
-
-			if check != nil {
-				s.pendingChecks <- check
+			if check := s.checkQueue.Dequeue(); check != nil {
+				pendingChecks <- check
 			}
 
 			time.Sleep(250 * time.Millisecond)
 		}
 
-		close(s.pendingChecks)
+		close(pendingChecks)
 	}()
 
 	for loop := true; loop; {
@@ -62,8 +57,8 @@ func (s *Server) Run() {
 				loop = false
 				break
 			}
-		case check := <-s.pendingChecks:
-			s.runningLimiter <- struct{}{}
+		case check := <-pendingChecks:
+			runningLimiter <- struct{}{}
 
 			go func() {
 				defer func() {
@@ -71,7 +66,7 @@ func (s *Server) Run() {
 						s.checkQueue.Enqueue(*check)
 					}
 
-					<-s.runningLimiter
+					<-runningLimiter
 				}()
 
 				result, err := check.Execute()
@@ -82,19 +77,15 @@ func (s *Server) Run() {
 
 				fmt.Println(result)
 			}()
-		default:
 		}
-
-		time.Sleep(250 * time.Millisecond)
 	}
+	close(runningLimiter)
 
 	// only get here when server stopped
-	// put any pending checks back in the queue
-	for check := range s.pendingChecks {
+	// put any pending checks back into the queue
+	for check := range pendingChecks {
 		s.checkQueue.Enqueue(*check)
 	}
-	// now flush the queue prior to shut down
-	s.checkQueue.Flush()
 
 	fmt.Println("Server stopped")
 }

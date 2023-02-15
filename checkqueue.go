@@ -6,8 +6,8 @@ import (
 )
 
 type CheckQueue interface {
-	Enqueue(check Check) error
-	Dequeue() (*Check, error)
+	Enqueue(check Check)
+	Dequeue() *Check
 	Flush()
 	Count() uint64
 }
@@ -28,7 +28,7 @@ func NewMemoryCheckQueue() *memoryCheckQueue {
 	}
 }
 
-func (m *memoryCheckQueue) Enqueue(check Check) error {
+func (m *memoryCheckQueue) Enqueue(check Check) {
 	priority := check.DueAt().Unix()
 
 	m.mu.Lock()
@@ -42,23 +42,21 @@ func (m *memoryCheckQueue) Enqueue(check Check) error {
 		m.priorities[priority] = priority
 		m.minPriority = int64(math.Min(float64(priority), float64(m.minPriority)))
 	}
-
-	return nil
 }
 
-func (m *memoryCheckQueue) Dequeue() (*Check, error) {
+func (m *memoryCheckQueue) Dequeue() *Check {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	_, ok := m.checks[m.minPriority]
 	if !ok {
-		return nil, nil
+		return nil
 	}
 
 	// if top-most Check is not due, then nothing is due.
 	check := m.checks[m.minPriority][0]
 	if !check.IsDue() {
-		return nil, nil
+		return nil
 	}
 
 	// check is due, delete it from the queue
@@ -79,9 +77,27 @@ func (m *memoryCheckQueue) Dequeue() (*Check, error) {
 		}
 	}
 
-	return &check, nil
+	return &check
 }
 
+/*
+	func (m *memoryCheckQueue) Peek() *Check {
+		m.mu.RLock()
+		defer m.mu.RUnlock()
+
+		_, ok := m.checks[m.minPriority]
+		if !ok {
+			return nil
+		}
+
+		check := m.checks[m.minPriority][0]
+		if !check.IsDue() {
+			return &check
+		}
+
+		return nil
+	}
+*/
 func (m *memoryCheckQueue) Flush() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
