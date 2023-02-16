@@ -74,17 +74,20 @@ func (s *Server) Run() {
 					<-runningLimiter
 				}()
 
-				if s.OnCheckExecuting != nil {
-					s.OnCheckExecuting(*check)
+				onCheckExecuting := s.OnCheckExecuting
+				if onCheckExecuting != nil {
+					onCheckExecuting(*check)
 				}
 				startTime := time.Now()
 				if err := check.Execute(); err != nil {
-					if s.OnCheckErrored != nil {
-						s.OnCheckErrored(*check, err)
+					onCheckErrored := s.OnCheckErrored
+					if onCheckErrored != nil {
+						onCheckErrored(*check, err)
 					}
 				}
-				if s.OnCheckFinished != nil {
-					s.OnCheckFinished(*check, time.Now().Sub(startTime))
+				onCheckFinished := s.OnCheckFinished
+				if onCheckFinished != nil {
+					onCheckFinished(*check, time.Now().Sub(startTime))
 				}
 			}()
 		}
