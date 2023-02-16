@@ -6,7 +6,8 @@ import (
 )
 
 type Server struct {
-	checkQueue       CheckQueue
+	checkQueue CheckQueue
+	// maxRunningChecks is the maximum number of concurrently executing checks
 	maxRunningChecks uint64
 	stop             chan struct{}
 }
@@ -34,11 +35,9 @@ func (s *Server) Run() {
 
 		for loop := true; loop; {
 			select {
-			case _, ok := <-s.stop:
-				if !ok {
-					loop = false
-					break
-				}
+			case <-s.stop:
+				loop = false
+				break
 			default:
 			}
 
@@ -52,11 +51,9 @@ func (s *Server) Run() {
 
 	for loop := true; loop; {
 		select {
-		case _, ok := <-s.stop:
-			if !ok {
-				loop = false
-				break
-			}
+		case <-s.stop:
+			loop = false
+			break
 		case check := <-pendingChecks:
 			runningLimiter <- struct{}{}
 
@@ -69,6 +66,11 @@ func (s *Server) Run() {
 				if err := check.Execute(); err != nil {
 					fmt.Printf("failed to execute check: %v\n", err)
 				}
+
+				if check.Incident != nil {
+					fmt.Println(check.Incident)
+				}
+
 			}()
 		}
 	}

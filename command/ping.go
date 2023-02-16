@@ -19,10 +19,9 @@ type PingCommand struct {
 }
 
 func (c PingCommand) Run() (gollector.Result, error) {
-
 	pinger, err := probing.NewPinger(c.Ip)
 	if err != nil {
-		return gollector.MakeUnknownResult("CMD_FAILURE"), err
+		return *gollector.MakeUnknownResult("CMD_FAILURE"), err
 	}
 
 	pinger.Interval = c.Interval
@@ -30,7 +29,7 @@ func (c PingCommand) Run() (gollector.Result, error) {
 	pinger.Size = c.Size
 	err = pinger.Run()
 	if err != nil {
-		return gollector.MakeUnknownResult("CMD_FAILURE"), err
+		return *gollector.MakeUnknownResult("CMD_FAILURE"), err
 	}
 
 	stats := pinger.Statistics()

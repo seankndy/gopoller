@@ -22,53 +22,53 @@ func main() {
 	tenSecondPeriodic := gollector.PeriodicSchedule{Interval: 10}
 
 	checkQueue.Enqueue(gollector.Check{
-		Schedule:       &tenSecondPeriodic,
-		SuppressAlerts: false,
-		Meta:           nil,
-		Command:        command.DummyCommand{Message: "check 1"},
-		LastCheck:      nil,
-		LastResult:     nil,
+		Schedule:          &tenSecondPeriodic,
+		SuppressIncidents: false,
+		Meta:              nil,
+		Command:           command.DummyCommand{Message: "check 1"},
+		LastCheck:         nil,
+		LastResult:        nil,
 	})
 
 	checkQueue.Enqueue(gollector.Check{
-		Schedule:       &tenSecondPeriodic,
-		SuppressAlerts: false,
-		Meta:           nil,
-		Command:        command.DummyCommand{Message: "check 2"},
-		LastCheck:      nil,
-		LastResult:     nil,
+		Schedule:          &tenSecondPeriodic,
+		SuppressIncidents: false,
+		Meta:              nil,
+		Command:           command.DummyCommand{Message: "check 2"},
+		LastCheck:         nil,
+		LastResult:        nil,
 	})
 
 	checkQueue.Enqueue(gollector.Check{
-		Schedule:       &tenSecondPeriodic,
-		SuppressAlerts: false,
-		Meta:           nil,
-		Command:        command.DummyCommand{Message: "check 3"},
-		LastCheck:      nil,
-		LastResult:     nil,
+		Schedule:          &tenSecondPeriodic,
+		SuppressIncidents: false,
+		Meta:              nil,
+		Command:           command.DummyCommand{Message: "check 3"},
+		LastCheck:         nil,
+		LastResult:        nil,
 	})
 
 	checkQueue.Enqueue(gollector.Check{
-		Schedule:       &tenSecondPeriodic,
-		SuppressAlerts: false,
-		Meta:           nil,
-		Command:        command.DummyCommand{Message: "check 4"},
-		LastCheck:      nil,
-		LastResult:     nil,
+		Schedule:          &tenSecondPeriodic,
+		SuppressIncidents: false,
+		Meta:              nil,
+		Command:           command.DummyCommand{Message: "check 4"},
+		LastCheck:         nil,
+		LastResult:        nil,
 	})
 
 	checkQueue.Enqueue(gollector.Check{
-		Schedule:       &tenSecondPeriodic,
-		SuppressAlerts: false,
-		Meta:           nil,
+		Schedule:          &tenSecondPeriodic,
+		SuppressIncidents: false,
+		Meta:              nil,
 		Command: command.PingCommand{
-			Ip:                      "8.8.8.8",
+			Ip:                      "209.193.82.100",
 			Count:                   5,
 			Interval:                100 * time.Millisecond,
 			Size:                    64,
 			PacketLossWarnThreshold: 90,
 			PacketLossCritThreshold: 95,
-			AvgRttWarnThreshold:     30,
+			AvgRttWarnThreshold:     1,
 			AvgRttCritThreshold:     50,
 		},
 		Handlers: []gollector.Handler{
