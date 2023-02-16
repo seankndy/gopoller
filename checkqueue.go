@@ -96,3 +96,22 @@ func (m *memoryCheckQueue) Count() uint64 {
 
 	return m.total
 }
+
+// CachingCheckQueue is a CheckQueue that fills itself with Checks from an external source when
+// the queue is empty and Dequeue() is called. Subsequent Dequeue() calls draw from this cache.
+// When Checks are Enqueue()'d, they are not added back into the queue, but placed in a separate
+// cache that is flushed at a given interval or when full, whichever comes first.
+//
+// This allows you to provide a few methods to handle reading and writing your checks from/to any external
+// database without having to worry about managing the queue logic itself.  It also provides the means
+// to not hit your database with every enqueue and dequeue operation.  Your job is to implement methods to
+// fill checks: query out the Checks, build the Check structs, and return them
+// write checks: take a slice of Checks, write them as efficiently as possible
+type CachingCheckQueue struct {
+	// WriteCacheSize is the number of Checks to cache prior to writing
+	WriteCacheSize uint64
+	// WriteCacheIntervalSeconds is the number of seconds before we write
+	WriteCacheIntervalSeconds uint64
+	// Where is the read cache size?  That's up you -- however many checks you return during the fill
+	// cycle is how many this will cache.
+}
