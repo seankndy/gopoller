@@ -7,9 +7,9 @@ type CheckSchedule interface {
 	DueAt(Check) time.Time
 }
 
-// PeriodicSchedule is a simple scheduler that is due every Interval seconds
+// PeriodicSchedule is a simple scheduler that is due every IntervalSeconds seconds
 type PeriodicSchedule struct {
-	Interval int64
+	IntervalSeconds int64
 }
 
 func (s PeriodicSchedule) IsDue(check Check) bool {
@@ -17,7 +17,7 @@ func (s PeriodicSchedule) IsDue(check Check) bool {
 		return true
 	}
 
-	return time.Now().Sub(*check.LastCheck) >= time.Duration(s.Interval)*time.Second
+	return time.Now().Sub(*check.LastCheck) >= time.Duration(s.IntervalSeconds)*time.Second
 }
 
 func (s PeriodicSchedule) DueAt(check Check) time.Time {
@@ -25,5 +25,5 @@ func (s PeriodicSchedule) DueAt(check Check) time.Time {
 		return time.Now()
 	}
 
-	return check.LastCheck.Add(time.Duration(s.Interval) * time.Second)
+	return check.LastCheck.Add(time.Duration(s.IntervalSeconds) * time.Second)
 }

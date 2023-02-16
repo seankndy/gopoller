@@ -19,7 +19,7 @@ func main() {
 
 	handleSignals(server, checkQueue)
 
-	tenSecondPeriodic := gollector.PeriodicSchedule{Interval: 10}
+	tenSecondPeriodic := gollector.PeriodicSchedule{IntervalSeconds: 10}
 
 	checkQueue.Enqueue(gollector.Check{
 		Schedule:          &tenSecondPeriodic,
