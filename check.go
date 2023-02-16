@@ -6,6 +6,7 @@ import (
 )
 
 type Check struct {
+	// Schedule determines when this Check is due to be executed.
 	Schedule CheckSchedule
 	Command  Command
 	Meta     map[string]string

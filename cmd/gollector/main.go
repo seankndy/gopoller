@@ -15,6 +15,7 @@ func main() {
 	checkQueue := gollector.NewMemoryCheckQueue()
 	server := gollector.NewServer(gollector.ServerConfig{
 		MaxRunningChecks: 3,
+		AutoReEnqueue:    true,
 	}, checkQueue)
 
 	handleSignals(server, checkQueue)

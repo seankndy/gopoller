@@ -6,7 +6,8 @@ import (
 )
 
 type Server struct {
-	checkQueue CheckQueue
+	checkQueue    CheckQueue
+	autoReEnqueue bool
 	// maxRunningChecks is the maximum number of concurrently executing checks
 	maxRunningChecks uint64
 	stop             chan struct{}
@@ -14,12 +15,14 @@ type Server struct {
 
 type ServerConfig struct {
 	MaxRunningChecks uint64
+	AutoReEnqueue    bool
 }
 
 func NewServer(config ServerConfig, checkQueue CheckQueue) *Server {
 	return &Server{
 		checkQueue:       checkQueue,
 		maxRunningChecks: config.MaxRunningChecks,
+		autoReEnqueue:    config.AutoReEnqueue,
 	}
 }
 
@@ -59,7 +62,9 @@ func (s *Server) Run() {
 
 			go func() {
 				defer func() {
-					s.checkQueue.Enqueue(*check)
+					if s.autoReEnqueue {
+						s.checkQueue.Enqueue(*check)
+					}
 					<-runningLimiter
 				}()
 
