@@ -1,38 +1,44 @@
 package gollector
 
 import (
-	"fmt"
 	"time"
 )
 
 type Server struct {
-	checkQueue    CheckQueue
-	autoReEnqueue bool
-	// maxRunningChecks is the maximum number of concurrently executing checks
-	maxRunningChecks uint64
-	stop             chan struct{}
-}
+	checkQueue CheckQueue
+	stop       chan struct{}
 
-type ServerConfig struct {
+	// Should server re-enqueue checks back to the check queue after they finish running
+	AutoReEnqueue bool
+
+	// The maximum number of concurrently executing checks
 	MaxRunningChecks uint64
-	AutoReEnqueue    bool
+
+	// Callback triggerred just prior to check execution (useful for logging)
+	OnCheckExecuting func(check Check)
+
+	// Callback triggerred if check command errors (useful for logging)
+	OnCheckErrored func(check Check, err error)
+
+	// Callback triggered just after a check finishes execution (useful for logging)
+	OnCheckFinished func(check Check, runDuration time.Duration)
 }
 
-func NewServer(config ServerConfig, checkQueue CheckQueue) *Server {
+func NewServer(checkQueue CheckQueue) *Server {
 	return &Server{
 		checkQueue:       checkQueue,
-		maxRunningChecks: config.MaxRunningChecks,
-		autoReEnqueue:    config.AutoReEnqueue,
+		MaxRunningChecks: 100,
+		AutoReEnqueue:    true,
 	}
 }
 
 func (s *Server) Run() {
 	s.stop = make(chan struct{})
 
-	runningLimiter := make(chan struct{}, s.maxRunningChecks)
+	runningLimiter := make(chan struct{}, s.MaxRunningChecks)
 	defer close(runningLimiter)
 
-	pendingChecks := make(chan *Check, s.maxRunningChecks)
+	pendingChecks := make(chan *Check, s.MaxRunningChecks)
 	go func() { // populate pendingCheck channel from queue indefinitely
 		defer close(pendingChecks)
 
@@ -62,31 +68,34 @@ func (s *Server) Run() {
 
 			go func() {
 				defer func() {
-					if s.autoReEnqueue {
+					if s.AutoReEnqueue {
 						s.checkQueue.Enqueue(*check)
 					}
 					<-runningLimiter
 				}()
 
+				if s.OnCheckExecuting != nil {
+					s.OnCheckExecuting(*check)
+				}
+				startTime := time.Now()
 				if err := check.Execute(); err != nil {
-					fmt.Printf("failed to execute check: %v\n", err)
+					if s.OnCheckErrored != nil {
+						s.OnCheckErrored(*check, err)
+					}
 				}
-
-				if check.Incident != nil {
-					fmt.Println(check.Incident)
+				if s.OnCheckFinished != nil {
+					s.OnCheckFinished(*check, time.Now().Sub(startTime))
 				}
-
 			}()
 		}
 	}
 
-	// only get here when server stopped
-	// put any pending checks back into the queue
-	for check := range pendingChecks {
-		s.checkQueue.Enqueue(*check)
+	if s.AutoReEnqueue {
+		// put any pending checks back into the queue prior to shut down
+		for check := range pendingChecks {
+			s.checkQueue.Enqueue(*check)
+		}
 	}
-
-	fmt.Println("Server stopped")
 }
 
 func (s *Server) Stop() {

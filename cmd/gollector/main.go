@@ -13,10 +13,15 @@ import (
 
 func main() {
 	checkQueue := gollector.NewMemoryCheckQueue()
-	server := gollector.NewServer(gollector.ServerConfig{
-		MaxRunningChecks: 3,
-		AutoReEnqueue:    true,
-	}, checkQueue)
+	server := gollector.NewServer(checkQueue)
+	server.MaxRunningChecks = 3
+	server.AutoReEnqueue = true
+	server.OnCheckExecuting = func(check gollector.Check) {
+		fmt.Printf("Check beginning execution: %v\n", check)
+	}
+	server.OnCheckFinished = func(check gollector.Check, runDuration time.Duration) {
+		fmt.Printf("Check finished execution: %v (%.3f seconds)\n", check, runDuration.Seconds())
+	}
 
 	handleSignals(server, checkQueue)
 
