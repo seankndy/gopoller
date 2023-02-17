@@ -6,6 +6,9 @@ import (
 )
 
 type Check struct {
+	// Id should be any unique value for this check
+	Id string
+
 	// Schedule determines when this Check is due to be executed.
 	Schedule CheckSchedule
 	Command  Command
@@ -30,14 +33,21 @@ func (c *Check) IsDue() bool {
 	return c.DueAt().Compare(time.Now()) <= 0
 }
 
-func (c *Check) Execute() error {
+func (c *Check) Execute() []error {
+	var errors []error
 	result, err := c.Command.Run()
+	if err != nil {
+		errors = append(errors, err)
+	}
 
 	newIncident := c.makeNewIncidentIfJustified(result)
 	c.resolveOrDiscardPreviousIncident(result, newIncident)
 
 	c.runResultHandlerMutations(&result, newIncident)
-	c.runResultHandlerProcessing(result, newIncident)
+	errs := c.runResultHandlerProcessing(result, newIncident)
+	if errs != nil {
+		errors = append(errors, errs...)
+	}
 
 	t := time.Now()
 	c.LastCheck = &t
@@ -46,7 +56,7 @@ func (c *Check) Execute() error {
 		c.Incident = newIncident
 	}
 
-	return err
+	return errs
 }
 
 func (c *Check) runResultHandlerMutations(result *Result, newIncident *Incident) {
@@ -57,19 +67,38 @@ func (c *Check) runResultHandlerMutations(result *Result, newIncident *Incident)
 	}
 }
 
-func (c *Check) runResultHandlerProcessing(result Result, newIncident *Incident) {
-	if c.Handlers != nil {
-		var wg sync.WaitGroup
-		wg.Add(len(c.Handlers))
-		for _, h := range c.Handlers {
-			go func(h Handler) {
-				defer wg.Done()
-
-				h.Process(*c, result, newIncident)
-			}(h)
-		}
-		wg.Wait()
+func (c *Check) runResultHandlerProcessing(result Result, newIncident *Incident) []error {
+	if c.Handlers == nil {
+		return nil
 	}
+
+	var wg sync.WaitGroup
+	errorCh := make(chan error)
+	wg.Add(len(c.Handlers))
+	for _, h := range c.Handlers {
+		go func(h Handler) {
+			defer wg.Done()
+
+			err := h.Process(*c, result, newIncident)
+
+			if err != nil {
+				errorCh <- err
+			}
+		}(h)
+	}
+	// wait on the group and close errorCh within a goroutine otherwise if 2+ of the processing goroutines do produce
+	// errors, one will block writing to errorCh while wg.Wait() is also blocking and thus deadlock.  we have to read
+	// from errorCh below to pop values from the errorCh to free space for other goroutines to write their errors
+	go func() {
+		wg.Wait()
+		close(errorCh)
+	}()
+
+	var errors []error
+	for err := range errorCh {
+		errors = append(errors, err)
+	}
+	return errors
 }
 
 func (c *Check) makeNewIncidentIfJustified(result Result) *Incident {
@@ -104,5 +133,5 @@ type Command interface {
 // Process() does not mutate any data, only read
 type Handler interface {
 	Mutate(check *Check, newResult *Result, newIncident *Incident)
-	Process(check Check, newResult Result, newIncident *Incident)
+	Process(check Check, newResult Result, newIncident *Incident) error
 }

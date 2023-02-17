@@ -14,6 +14,7 @@ func (h DummyHandler) Mutate(check *gollector.Check, result *gollector.Result, n
 	}
 }
 
-func (h DummyHandler) Process(check gollector.Check, result gollector.Result, newIncident *gollector.Incident) {
+func (h DummyHandler) Process(check gollector.Check, result gollector.Result, newIncident *gollector.Incident) error {
 	fmt.Printf("processing data for check %v and result %v\n", check, result)
+	return nil
 }

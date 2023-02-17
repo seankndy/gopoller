@@ -66,7 +66,15 @@ func MakeUnknownResult(reasonCode string) *Result {
 	}
 }
 
+type ResultMetricType uint8
+
+const (
+	ResultMetricCounter ResultMetricType = 1
+	ResultMetricGauge                    = 2
+)
+
 type ResultMetric struct {
 	Label string
 	Value string
+	Type  ResultMetricType
 }

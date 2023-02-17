@@ -79,10 +79,12 @@ func (s *Server) Run() {
 					onCheckExecuting(*check)
 				}
 				startTime := time.Now()
-				if err := check.Execute(); err != nil {
+				if errs := check.Execute(); errs != nil {
 					onCheckErrored := s.OnCheckErrored
 					if onCheckErrored != nil {
-						onCheckErrored(*check, err)
+						for _, err := range errs {
+							onCheckErrored(*check, err)
+						}
 					}
 				}
 				onCheckFinished := s.OnCheckFinished

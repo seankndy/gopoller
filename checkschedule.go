@@ -9,7 +9,7 @@ type CheckSchedule interface {
 
 // PeriodicSchedule is a simple scheduler that is due every IntervalSeconds seconds
 type PeriodicSchedule struct {
-	IntervalSeconds int64
+	IntervalSeconds int
 }
 
 func (s PeriodicSchedule) IsDue(check Check) bool {
