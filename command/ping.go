@@ -64,5 +64,6 @@ func (c PingCommand) Run() (gollector.Result, error) {
 			{Label: "jitter", Value: fmt.Sprintf("%.2f", jitterMs)},
 			{Label: "loss", Value: fmt.Sprintf("%.2f", lossPerc)},
 		},
+		Time: time.Now(),
 	}, nil
 }

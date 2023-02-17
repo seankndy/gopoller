@@ -1,5 +1,7 @@
 package gollector
 
+import "time"
+
 type ResultState uint8
 
 const (
@@ -26,6 +28,7 @@ type Result struct {
 	State      ResultState
 	ReasonCode string
 	Metrics    []ResultMetric
+	Time       time.Time
 }
 
 func (r Result) justifiesNewIncidentForCheck(check Check) bool {
@@ -63,6 +66,7 @@ func MakeUnknownResult(reasonCode string) *Result {
 		State:      StateUnknown,
 		ReasonCode: reasonCode,
 		Metrics:    nil,
+		Time:       time.Now(),
 	}
 }
 

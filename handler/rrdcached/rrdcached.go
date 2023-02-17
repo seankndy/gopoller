@@ -124,12 +124,29 @@ func (h Handler) Process(check gollector.Check, result gollector.Result, newInci
 
 	// update rrd files
 	var updateCmds []*rrd.Cmd
-	for _, metric := range result.Metrics {
-		filename, dsName := getRrdFilenameAndDsForMetric(rrdFileDefs, metric)
+	for _, rrdFile := range rrdFileDefs {
+		var dsNames, dsValues []string
+		for metricLabel, dsName := range rrdFile.MetricLabelToDS {
+			var metric *gollector.ResultMetric
 
-		if filename != nil && dsName != nil {
-			updateCmds = append(updateCmds, rrd.NewCmd("update").WithArgs(filename, "-t "+*dsName))
+			for _, m := range result.Metrics {
+				if m.Label == metricLabel {
+					metric = &m
+					break
+				}
+			}
+
+			if metric != nil {
+				dsNames = append(dsNames, dsName)
+				dsValues = append(dsValues, metric.Value)
+			}
 		}
+
+		updateCmds = append(updateCmds, rrd.NewCmd("update").WithArgs(
+			rrdFile.Filename,
+			"-t "+strings.Join(dsNames, ":"),
+			fmt.Sprintf("%d:%s", result.Time.Unix(), strings.Join(dsValues, ":")),
+		))
 	}
 	if updateCmds != nil {
 		err := client.Batch(updateCmds...)
