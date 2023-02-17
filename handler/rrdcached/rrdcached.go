@@ -13,22 +13,27 @@ type Handler struct {
 	addr    string
 	timeout time.Duration
 
-	// GetMetricRrdSpec should return a RrdSpec struct defining the RRD files and ResultMetric label-to-ds mappings
-	GetRrdSpec func(gollector.Check, gollector.Result) *RrdSpec
+	// GetRrdFileDefs should return a slice of RrdFileDefs defining the RRD files and ResultMetric label-to-ds mappings
+	GetRrdFileDefs func(gollector.Check, gollector.Result) []RrdFileDef
 }
 
-// RrdSpec maps result metrics to RRD data sources
-type RrdSpec struct {
-	Files           []RrdFile
-	MetricLabelToDS map[string]string
-}
-
-// RrdFile defines a rrd file and it's characteristics
-type RrdFile struct {
+// RrdFileDef defines a rrd file and it's characteristics
+type RrdFileDef struct {
 	Filename           string
 	DataSources        []DS
 	RoundRobinArchives []RRA
 	Step               time.Duration
+
+	MetricLabelToDS map[string]string
+}
+
+func getRrdFilenameAndDsForMetric(fileDefs []RrdFileDef, metric gollector.ResultMetric) (*string, *string) {
+	for _, file := range fileDefs {
+		if dsName, ok := file.MetricLabelToDS[metric.Label]; ok {
+			return &file.Filename, &dsName
+		}
+	}
+	return nil, nil
 }
 
 // DS represents a RRD data source definition
@@ -61,11 +66,11 @@ func NewRRA(raw string) RRA {
 	return RRA(raw)
 }
 
-func NewHandler(addr string, timeout time.Duration, getRrdSpec func(gollector.Check, gollector.Result) *RrdSpec) *Handler {
+func NewHandler(addr string, timeout time.Duration, getRrdFileDefs func(gollector.Check, gollector.Result) []RrdFileDef) *Handler {
 	return &Handler{
-		addr:       addr,
-		timeout:    timeout,
-		GetRrdSpec: getRrdSpec,
+		addr:           addr,
+		timeout:        timeout,
+		GetRrdFileDefs: getRrdFileDefs,
 	}
 }
 
@@ -74,17 +79,17 @@ func (h Handler) Mutate(check *gollector.Check, result *gollector.Result, newInc
 }
 
 func (h Handler) Process(check gollector.Check, result gollector.Result, newIncident *gollector.Incident) (err error) {
-	getRrdSpec := h.GetRrdSpec
-	if getRrdSpec == nil {
+	getRrdFileDefs := h.GetRrdFileDefs
+	if getRrdFileDefs == nil {
 		return
 	}
-	rrdSpec := getRrdSpec(check, result)
-	if rrdSpec == nil {
+	rrdFileDefs := getRrdFileDefs(check, result)
+	if rrdFileDefs == nil {
 		return
 	}
 
 	// connect to rrdcached
-	client := h.createRrdClient()
+	client, err := h.createRrdClient()
 	defer func() {
 		errC := client.Close()
 		if err == nil {
@@ -100,7 +105,7 @@ func (h Handler) Process(check gollector.Check, result gollector.Result, newInci
 	}
 
 	// create rrd files that don't exist
-	for _, rrdFile := range rrdSpec.Files {
+	for _, rrdFile := range rrdFileDefs {
 		if !rrdFileExists(rrdFile.Filename) {
 			dataSources := make([]rrd.DS, len(rrdFile.DataSources))
 			for i := 0; i < len(rrdFile.DataSources); i++ {
@@ -118,11 +123,25 @@ func (h Handler) Process(check gollector.Check, result gollector.Result, newInci
 	}
 
 	// update rrd files
+	var updateCmds []*rrd.Cmd
+	for _, metric := range result.Metrics {
+		filename, dsName := getRrdFilenameAndDsForMetric(rrdFileDefs, metric)
+
+		if filename != nil && dsName != nil {
+			updateCmds = append(updateCmds, rrd.NewCmd("update").WithArgs(filename, "-t "+*dsName))
+		}
+	}
+	if updateCmds != nil {
+		err := client.Batch(updateCmds...)
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
 
-func (h Handler) createRrdClient() *rrd.Client {
+func (h Handler) createRrdClient() (*rrd.Client, error) {
 	var client *rrd.Client
 	var err error
 	addr := h.addr
@@ -135,11 +154,7 @@ func (h Handler) createRrdClient() *rrd.Client {
 		}
 		client, err = rrd.NewClient(addr, rrd.Timeout(h.timeout))
 	}
-	if err != nil {
-		// TODO: error handling...
-		return nil
-	}
-	return client
+	return client, err
 }
 
 // example getspecs func:
