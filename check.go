@@ -1,6 +1,7 @@
 package gollector
 
 import (
+	"github.com/hashicorp/go-multierror"
 	"sync"
 	"time"
 )
@@ -33,20 +34,16 @@ func (c *Check) IsDue() bool {
 	return c.DueAt().Compare(time.Now()) <= 0
 }
 
-func (c *Check) Execute() []error {
-	var errors []error
+func (c *Check) Execute() error {
 	result, err := c.Command.Run()
-	if err != nil {
-		errors = append(errors, err)
-	}
 
 	newIncident := c.makeNewIncidentIfJustified(result)
 	c.resolveOrDiscardPreviousIncident(result, newIncident)
 
 	c.runResultHandlerMutations(&result, newIncident)
-	errs := c.runResultHandlerProcessing(result, newIncident)
-	if errs != nil {
-		errors = append(errors, errs...)
+	errP := c.runResultHandlerProcessing(result, newIncident)
+	if errP != nil {
+		err = multierror.Append(err, errP)
 	}
 
 	t := time.Now()
@@ -56,7 +53,7 @@ func (c *Check) Execute() []error {
 		c.Incident = newIncident
 	}
 
-	return errs
+	return err
 }
 
 func (c *Check) runResultHandlerMutations(result *Result, newIncident *Incident) {
@@ -67,7 +64,7 @@ func (c *Check) runResultHandlerMutations(result *Result, newIncident *Incident)
 	}
 }
 
-func (c *Check) runResultHandlerProcessing(result Result, newIncident *Incident) []error {
+func (c *Check) runResultHandlerProcessing(result Result, newIncident *Incident) error {
 	if c.Handlers == nil {
 		return nil
 	}
@@ -94,11 +91,11 @@ func (c *Check) runResultHandlerProcessing(result Result, newIncident *Incident)
 		close(errorCh)
 	}()
 
-	var errors []error
+	var error error
 	for err := range errorCh {
-		errors = append(errors, err)
+		error = multierror.Append(error, err)
 	}
-	return errors
+	return error
 }
 
 func (c *Check) makeNewIncidentIfJustified(result Result) *Incident {

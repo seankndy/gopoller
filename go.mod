@@ -9,6 +9,8 @@ require (
 
 require (
 	github.com/google/uuid v1.3.0 // indirect
+	github.com/hashicorp/errwrap v1.0.0 // indirect
+	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/multiplay/go-rrd v0.0.0-20171201124026-4a70b1d94ccb // indirect
 	github.com/prometheus-community/pro-bing v0.1.0 // indirect
 	golang.org/x/net v0.7.0 // indirect
