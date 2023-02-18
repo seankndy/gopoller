@@ -111,6 +111,7 @@ func buildUpdateCommands(rrdFileDefs []RrdFileDef, result gollector.Result) []*C
 			}
 		}
 
+		// TODO: -t is not supported by UPDATE in rrdcached.  updates must be put in the exact order they are defined
 		updateCmds = append(updateCmds, NewCmd("update").WithArgs(
 			rrdFile.Filename,
 			"-t "+strings.Join(dsNames, ":"),
