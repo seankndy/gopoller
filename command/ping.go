@@ -56,14 +56,9 @@ func (c PingCommand) Run() (gollector.Result, error) {
 		state = gollector.StateOk
 	}
 
-	return gollector.Result{
-		State:      state,
-		ReasonCode: reasonCode,
-		Metrics: []gollector.ResultMetric{
-			{Label: "avg", Value: fmt.Sprintf("%.2f", avgMs)},
-			{Label: "jitter", Value: fmt.Sprintf("%.2f", jitterMs)},
-			{Label: "loss", Value: fmt.Sprintf("%.2f", lossPerc)},
-		},
-		Time: time.Now(),
-	}, nil
+	return *gollector.NewResult(state, reasonCode, []gollector.ResultMetric{
+		{Label: "avg", Value: fmt.Sprintf("%.2f", avgMs)},
+		{Label: "jitter", Value: fmt.Sprintf("%.2f", jitterMs)},
+		{Label: "loss", Value: fmt.Sprintf("%.2f", lossPerc)},
+	}), nil
 }

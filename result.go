@@ -31,6 +31,15 @@ type Result struct {
 	Time       time.Time
 }
 
+func NewResult(state ResultState, reasonCode string, metrics []ResultMetric) *Result {
+	return &Result{
+		State:      state,
+		ReasonCode: reasonCode,
+		Metrics:    metrics,
+		Time:       time.Now(),
+	}
+}
+
 func (r Result) justifiesNewIncidentForCheck(check Check) bool {
 	// if incident suppression is on, never allow new incident
 	if check.SuppressIncidents {
