@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"github.com/seankndy/gollector"
-	"github.com/seankndy/gollector/command"
-	"github.com/seankndy/gollector/handler"
+	"github.com/seankndy/gollector/command/dummy"
+	"github.com/seankndy/gollector/command/ping"
+	dummy2 "github.com/seankndy/gollector/handler/dummy"
+	"github.com/seankndy/gollector/handler/rrdcached"
 	"os"
 	"os/signal"
 	"syscall"
@@ -31,7 +33,7 @@ func main() {
 		Schedule:          &tenSecondPeriodic,
 		SuppressIncidents: false,
 		Meta:              nil,
-		Command:           command.DummyCommand{Message: "check 1"},
+		Command:           dummy.Command{Message: "check 1"},
 		LastCheck:         nil,
 		LastResult:        nil,
 	})
@@ -40,7 +42,7 @@ func main() {
 		Schedule:          &tenSecondPeriodic,
 		SuppressIncidents: false,
 		Meta:              nil,
-		Command:           command.DummyCommand{Message: "check 2"},
+		Command:           dummy.Command{Message: "check 2"},
 		LastCheck:         nil,
 		LastResult:        nil,
 	})
@@ -49,7 +51,7 @@ func main() {
 		Schedule:          &tenSecondPeriodic,
 		SuppressIncidents: false,
 		Meta:              nil,
-		Command:           command.DummyCommand{Message: "check 3"},
+		Command:           dummy.Command{Message: "check 3"},
 		LastCheck:         nil,
 		LastResult:        nil,
 	})
@@ -58,7 +60,7 @@ func main() {
 		Schedule:          &tenSecondPeriodic,
 		SuppressIncidents: false,
 		Meta:              nil,
-		Command:           command.DummyCommand{Message: "check 4"},
+		Command:           dummy.Command{Message: "check 4"},
 		LastCheck:         nil,
 		LastResult:        nil,
 	})
@@ -67,7 +69,7 @@ func main() {
 		Schedule:          &tenSecondPeriodic,
 		SuppressIncidents: false,
 		Meta:              nil,
-		Command: command.PingCommand{
+		Command: ping.Command{
 			Ip:                      "209.193.82.100",
 			Count:                   5,
 			Interval:                100 * time.Millisecond,
@@ -78,7 +80,7 @@ func main() {
 			AvgRttCritThreshold:     50,
 		},
 		Handlers: []gollector.Handler{
-			handler.DummyHandler{},
+			dummy2.Handler{},
 		},
 		LastCheck:  nil,
 		LastResult: nil,
@@ -111,4 +113,53 @@ func handleSignals(server *gollector.Server, checkQueue gollector.CheckQueue) {
 			}
 		}
 	}()
+}
+
+// example getRrdFileDefs func:
+func getRrdFileDefs(check gollector.Check, result gollector.Result) []rrdcached.RrdFileDef {
+	_, isPeriodic := check.Schedule.(gollector.PeriodicSchedule)
+	// no spec if no metrics or if the underlying check isn't on an interval schedule
+	if result.Metrics == nil || !isPeriodic {
+		return nil
+	}
+
+	interval := check.Schedule.(gollector.PeriodicSchedule).IntervalSeconds
+
+	var rrdFileDefs []rrdcached.RrdFileDef
+	for _, metric := range result.Metrics {
+		var dst rrdcached.DST
+		if metric.Type == gollector.ResultMetricCounter {
+			dst = rrdcached.Counter
+		} else {
+			dst = rrdcached.Gauge
+		}
+		ds := rrdcached.NewDS(metric.Label, dst, interval*2, "U", "U")
+
+		weeklyAvg := 1800
+		monthlyAvg := 7200
+		yearlyAvg := 43200
+
+		rrdFileDefs = append(rrdFileDefs, rrdcached.RrdFileDef{
+			Filename:    "/Users/sean/rrd_test/" + check.Id + "/" + ds.Name(),
+			DataSources: []rrdcached.DS{ds},
+			RoundRobinArchives: []rrdcached.RRA{
+				rrdcached.NewMinRRA(0.5, 1, 86400/interval),
+				rrdcached.NewMinRRA(0.5, weeklyAvg/interval, 86400*7/interval/(weeklyAvg/interval)),
+				rrdcached.NewMinRRA(0.5, monthlyAvg/interval, 86400*31/interval/(monthlyAvg/interval)),
+				rrdcached.NewMinRRA(0.5, yearlyAvg/interval, 86400*366/interval/(yearlyAvg/interval)),
+
+				rrdcached.NewAverageRRA(0.5, 1, 86400/interval),
+				rrdcached.NewAverageRRA(0.5, weeklyAvg/interval, 86400*7/interval/(weeklyAvg/interval)),
+				rrdcached.NewAverageRRA(0.5, monthlyAvg/interval, 86400*31/interval/(monthlyAvg/interval)),
+				rrdcached.NewAverageRRA(0.5, yearlyAvg/interval, 86400*366/interval/(yearlyAvg/interval)),
+
+				rrdcached.NewMaxRRA(0.5, 1, 86400/interval),
+				rrdcached.NewMaxRRA(0.5, weeklyAvg/interval, 86400*7/interval/(weeklyAvg/interval)),
+				rrdcached.NewMaxRRA(0.5, monthlyAvg/interval, 86400*31/interval/(monthlyAvg/interval)),
+				rrdcached.NewMaxRRA(0.5, yearlyAvg/interval, 86400*366/interval/(yearlyAvg/interval)),
+			},
+			Step: time.Duration(interval) * time.Second,
+		})
+	}
+	return rrdFileDefs
 }

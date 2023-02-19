@@ -9,6 +9,8 @@ package main
 import (
 	"fmt"
 	"github.com/seankndy/gollector"
+	"github.com/seankndy/gollector/command/ping"
+	"github.com/seankndy/gollector/handler/dummy"
 )
 
 func main() {
@@ -43,7 +45,7 @@ func main() {
 		// meta is a map[string]string to store extra data to carry along with the check
 		Meta:              nil,
 		// this is the command to execute along with several self-explanatory parameters
-		Command: command.PingCommand{
+		Command: ping.Command{
 			Ip:                      "8.8.8.8",
 			Count:                   5,
 			Interval:                100 * time.Millisecond,
@@ -65,7 +67,7 @@ func main() {
 		Schedule:          &tenSecondPeriodic,
 		SuppressIncidents: false,
 		Meta:              nil,
-		Command: command.PingCommand{
+		Command: ping.Command{
 			Ip:                      "1.1.1.1",
 			Count:                   5,
 			Interval:                100 * time.Millisecond,
@@ -76,7 +78,7 @@ func main() {
 			AvgRttCritThreshold:     50,
 		},
 		Handlers: []gollector.Handler{
-			handler.DummyHandler{},
+			dummy.Handler{},
 		},
 		LastCheck:  nil,
 		LastResult: nil,

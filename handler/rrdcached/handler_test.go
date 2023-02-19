@@ -98,39 +98,33 @@ func TestIssuesCorrectBatchUpdateCommands(t *testing.T) {
 			{
 				Filename: "/foo1.rrd",
 				DataSources: []DS{
-					NewDS(fmt.Sprintf("DS:%s:%s:%d:U:U", "metric1", "COUNTER", 600)),
-					NewDS(fmt.Sprintf("DS:%s:%s:%d:U:U", "metric2", "GAUGE", 600)),
+					NewCounterDS("metric1", 600, "U", "U"),
+					NewGaugeDS("metric2", 600, "U", "U"),
 				},
 				RoundRobinArchives: []RRA{
-					NewRRA(fmt.Sprintf("RRA:AVERAGE:0.5:1:%d", 86400/300)),
-					NewRRA(fmt.Sprintf("RRA:AVERAGE:0.5:%d:%d", 1800/300, 86400*7/300/(1800/300))),
+					NewAverageRRA(0.5, 1, 86400/300),
 				},
 				Step: 300 * time.Second,
-				MetricLabelToDS: map[string]string{
-					"mymetric1": "metric1",
-					"mymetric2": "metric2",
+				DataSourceToMetricMappings: map[string]string{
+					"metric1": "mymetric1",
+					"metric2": "mymetric2",
 				},
 			},
 			{
 				Filename: "/foo2.rrd",
 				DataSources: []DS{
-					NewDS(fmt.Sprintf("DS:%s:%s:%d:U:U", "metric3", "COUNTER", 600)),
-					NewDS(fmt.Sprintf("DS:%s:%s:%d:U:U", "metric4", "GAUGE", 600)),
+					NewCounterDS("metric3", 600, "U", "U"),
+					NewGaugeDS("metric4", 600, "U", "U"),
 				},
 				RoundRobinArchives: []RRA{
-					NewRRA(fmt.Sprintf("RRA:AVERAGE:0.5:1:%d", 86400/300)),
-					NewRRA(fmt.Sprintf("RRA:AVERAGE:0.5:%d:%d", 1800/300, 86400*7/300/(1800/300))),
+					NewAverageRRA(0.5, 1, 86400/300),
 				},
 				Step: 300 * time.Second,
-				MetricLabelToDS: map[string]string{
-					"mymetric3": "metric3",
-					"mymetric4": "metric4",
-				},
 			},
 		}
 	})
 
-	tm := time.Date(1987, time.August, 21, 7, 0, 0, 0, time.Local)
+	tm := time.Unix(556549200, 0)
 	check := gollector.Check{}
 	result := gollector.Result{
 		State:      gollector.StateOk,
@@ -138,8 +132,9 @@ func TestIssuesCorrectBatchUpdateCommands(t *testing.T) {
 		Metrics: []gollector.ResultMetric{
 			{Label: "mymetric2", Value: "123456"},
 			{Label: "mymetric1", Value: "654321"},
-			{Label: "mymetric3", Value: "456789"},
-			{Label: "mymetric4", Value: "987654"},
+			{Label: "metric3", Value: "456789"},
+			{Label: "metric4", Value: "987654"},
+			{Label: "mymetric5", Value: "987654"}, // undefined by rrdfile spec, so should not show up in updates
 		},
 		Time: tm,
 	}
@@ -150,8 +145,8 @@ func TestIssuesCorrectBatchUpdateCommands(t *testing.T) {
 		t.Error("Batch never called on RRD client")
 	} else {
 		want := []string{
-			"update /foo1.rrd -t metric1:metric2 556549200:654321:123456\n",
-			"update /foo2.rrd -t metric3:metric4 556549200:456789:987654\n",
+			"update /foo1.rrd 556549200:654321:123456\n",
+			"update /foo2.rrd 556549200:456789:987654\n",
 		}
 		var got []string
 		for _, line := range mockRrdClient.BatchCmds[0] {

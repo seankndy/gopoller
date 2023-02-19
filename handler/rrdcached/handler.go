@@ -11,7 +11,8 @@ import (
 type Handler struct {
 	client Client
 
-	// GetRrdFileDefs should return a slice of RrdFileDefs defining the RRD files and ResultMetric label-to-ds mappings
+	// GetRrdFileDefs should return a slice of RrdFileDefs defining the RRD file specifications for a given Check and
+	// it's Result data.
 	GetRrdFileDefs func(gollector.Check, gollector.Result) []RrdFileDef
 }
 
@@ -87,100 +88,41 @@ type RrdFileDef struct {
 	RoundRobinArchives []RRA
 	Step               time.Duration
 
-	// TODO: move metric labels to DataSources directly?
-	MetricLabelToDS map[string]string
+	// Optional metric label to data source name mapping.  By default, metric labels will map to DS names identically.
+	// Use this if your metric name from the check command is different from your DS name.
+	DataSourceToMetricMappings map[string]string
 }
 
 func buildUpdateCommands(rrdFileDefs []RrdFileDef, result gollector.Result) []*Cmd {
 	var updateCmds []*Cmd
 	for _, rrdFile := range rrdFileDefs {
-		var dsNames, dsValues []string
-		for metricLabel, dsName := range rrdFile.MetricLabelToDS {
-			var metric *gollector.ResultMetric
+		var dsValues []string
 
+		for _, ds := range rrdFile.DataSources {
+			metricLabel := ds.Name()
+
+			if rrdFile.DataSourceToMetricMappings != nil {
+				if v, ok := rrdFile.DataSourceToMetricMappings[ds.Name()]; ok {
+					metricLabel = v
+				}
+			}
+
+			var metric *gollector.ResultMetric
 			for _, m := range result.Metrics {
 				if m.Label == metricLabel {
 					metric = &m
 					break
 				}
 			}
-
 			if metric != nil {
-				dsNames = append(dsNames, dsName)
 				dsValues = append(dsValues, metric.Value)
 			}
 		}
 
-		// TODO: -t is not supported by UPDATE in rrdcached.  updates must be put in the exact order they are defined
 		updateCmds = append(updateCmds, NewCmd("update").WithArgs(
 			rrdFile.Filename,
-			"-t "+strings.Join(dsNames, ":"),
 			fmt.Sprintf("%d:%s", result.Time.Unix(), strings.Join(dsValues, ":")),
 		))
 	}
 	return updateCmds
-}
-
-// example getRrdFileDefs func:
-func getRrdFileDefs(check gollector.Check, result gollector.Result) []RrdFileDef {
-	_, isPeriodic := check.Schedule.(gollector.PeriodicSchedule)
-	// no spec if no metrics or if the underlying check isn't on an interval schedule
-	if result.Metrics == nil || !isPeriodic {
-		return nil
-	}
-
-	interval := check.Schedule.(gollector.PeriodicSchedule).IntervalSeconds
-
-	rrdDsName := func(metric gollector.ResultMetric) string {
-		label := metric.Label
-		// RRD DS can only be 19 chars max
-		if len(label) > 19 {
-			label = label[0:19]
-		}
-		return label
-	}
-
-	var rrdFileDefs []RrdFileDef
-	for _, metric := range result.Metrics {
-		dsName := rrdDsName(metric)
-		var dsType string
-		if metric.Type == gollector.ResultMetricCounter {
-			dsType = "COUNTER"
-		} else {
-			dsType = "GAUGE"
-		}
-		dsStep := interval * 2
-
-		weeklyAvg := 1800
-		monthlyAvg := 7200
-		yearlyAvg := 43200
-
-		rrdFileDefs = append(rrdFileDefs, RrdFileDef{
-			Filename: "/Users/sean/rrd_test/" + check.Id + "/" + dsName,
-			DataSources: []DS{
-				NewDS(fmt.Sprintf("DS:%s:%s:%d:U:U", rrdDsName(metric), dsType, dsStep)),
-			},
-			RoundRobinArchives: []RRA{
-				NewRRA(fmt.Sprintf("RRA:MIN:0.5:1:%d", 86400/interval)),
-				NewRRA(fmt.Sprintf("RRA:MIN:0.5:%d:%d", weeklyAvg/interval, 86400*7/interval/(weeklyAvg/interval))),
-				NewRRA(fmt.Sprintf("RRA:MIN:0.5:%d:%d", monthlyAvg/interval, 86400*31/interval/(monthlyAvg/interval))),
-				NewRRA(fmt.Sprintf("RRA:MIN:0.5:%d:%d", yearlyAvg/interval, 86400*366/interval/(yearlyAvg/interval))),
-
-				NewRRA(fmt.Sprintf("RRA:AVERAGE:0.5:1:%d", 86400/interval)),
-				NewRRA(fmt.Sprintf("RRA:AVERAGE:0.5:%d:%d", weeklyAvg/interval, 86400*7/interval/(weeklyAvg/interval))),
-				NewRRA(fmt.Sprintf("RRA:AVERAGE:0.5:%d:%d", monthlyAvg/interval, 86400*31/interval/(monthlyAvg/interval))),
-				NewRRA(fmt.Sprintf("RRA:AVERAGE:0.5:%d:%d", yearlyAvg/interval, 86400*366/interval/(yearlyAvg/interval))),
-
-				NewRRA(fmt.Sprintf("RRA:MAX:0.5:1:%d", 86400/interval)),
-				NewRRA(fmt.Sprintf("RRA:MAX:0.5:%d:%d", weeklyAvg/interval, 86400*7/interval/(weeklyAvg/interval))),
-				NewRRA(fmt.Sprintf("RRA:MAX:0.5:%d:%d", monthlyAvg/interval, 86400*31/interval/(monthlyAvg/interval))),
-				NewRRA(fmt.Sprintf("RRA:MAX:0.5:%d:%d", yearlyAvg/interval, 86400*366/interval/(yearlyAvg/interval))),
-			},
-			Step: time.Duration(interval) * time.Second,
-			MetricLabelToDS: map[string]string{
-				metric.Label: dsName,
-			},
-		})
-	}
-	return rrdFileDefs
 }

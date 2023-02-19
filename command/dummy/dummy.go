@@ -1,4 +1,4 @@
-package command
+package dummy
 
 import (
 	"fmt"
@@ -6,11 +6,11 @@ import (
 	"time"
 )
 
-type DummyCommand struct {
+type Command struct {
 	Message string
 }
 
-func (c DummyCommand) Run() (gollector.Result, error) {
+func (c Command) Run() (gollector.Result, error) {
 	fmt.Printf("I am a dummy command: %v\n", c.Message)
 
 	time.Sleep(500 * time.Millisecond)
