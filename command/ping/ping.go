@@ -18,7 +18,7 @@ type Command struct {
 	AvgRttCritThreshold     float64
 }
 
-func (c Command) Run() (gollector.Result, error) {
+func (c Command) Run(check gollector.Check) (gollector.Result, error) {
 	pinger, err := probing.NewPinger(c.Ip)
 	if err != nil {
 		return *gollector.MakeUnknownResult("CMD_FAILURE"), err

@@ -35,7 +35,7 @@ func (c *Check) IsDue() bool {
 }
 
 func (c *Check) Execute() error {
-	result, err := c.Command.Run()
+	result, err := c.Command.Run(*c)
 
 	newIncident := c.makeNewIncidentIfJustified(result)
 	c.resolveOrDiscardPreviousIncident(result, newIncident)
@@ -123,7 +123,7 @@ func (c *Check) resolveOrDiscardPreviousIncident(newResult Result, newIncident *
 }
 
 type Command interface {
-	Run() (Result, error)
+	Run(Check) (Result, error)
 }
 
 // Handler mutates and/or processes a Check and it's latest result data
