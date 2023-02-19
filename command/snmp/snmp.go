@@ -15,10 +15,6 @@ type Command struct {
 }
 
 func (c Command) Run() (gollector.Result, error) {
-	if len(c.Oids) > gosnmp.MaxOids {
-		return *gollector.MakeUnknownResult("TOO_MANY_OIDS"), nil
-	}
-
 	snmp := &gosnmp.GoSNMP{
 		Target:             c.Ip,
 		Port:               161,
@@ -28,6 +24,7 @@ func (c Command) Run() (gollector.Result, error) {
 		Timeout:            2 * time.Second,
 		Retries:            3,
 		ExponentialTimeout: true,
+		MaxOids:            gosnmp.MaxOids,
 	}
 
 	err := snmp.Connect()
@@ -71,14 +68,14 @@ func (c Command) getSnmpVersionForGoSnmp() gosnmp.SnmpVersion {
 	}
 }
 
-func getSnmpVariables(client *gosnmp.GoSNMP, oids []string) ([]gosnmp.SnmpPDU, error) {
+func getSnmpVariables(snmp *gosnmp.GoSNMP, oids []string) ([]gosnmp.SnmpPDU, error) {
 	numOids := len(oids)
 	variables := make([]gosnmp.SnmpPDU, 0, numOids)
 
-	// if numOids > gosnmp.MaxOids, chunk them and make ceil(numOids/gosnmp.MaxOids) SNMP GET requests
+	// if numOids > snmp.MaxOids, chunk them and make ceil(numOids/snmp.MaxOids) SNMP GET requests
 	var chunk int
-	if numOids > gosnmp.MaxOids {
-		chunk = gosnmp.MaxOids
+	if numOids > snmp.MaxOids {
+		chunk = snmp.MaxOids
 	} else {
 		chunk = numOids
 	}
@@ -87,7 +84,7 @@ func getSnmpVariables(client *gosnmp.GoSNMP, oids []string) ([]gosnmp.SnmpPDU, e
 			chunk = numOids - offset
 		}
 
-		result, err := client.Get(oids[offset : offset+chunk])
+		result, err := snmp.Get(oids[offset : offset+chunk])
 		if err != nil {
 			return nil, err
 		}
