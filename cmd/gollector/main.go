@@ -5,6 +5,7 @@ import (
 	"github.com/seankndy/gollector"
 	"github.com/seankndy/gollector/command/dummy"
 	"github.com/seankndy/gollector/command/ping"
+	"github.com/seankndy/gollector/command/snmp"
 	dummy2 "github.com/seankndy/gollector/handler/dummy"
 	"github.com/seankndy/gollector/handler/rrdcached"
 	"os"
@@ -78,6 +79,23 @@ func main() {
 			PacketLossCritThreshold: 95,
 			AvgRttWarnThreshold:     1,
 			AvgRttCritThreshold:     50,
+		},
+		Handlers: []gollector.Handler{
+			dummy2.Handler{},
+		},
+		LastCheck:  nil,
+		LastResult: nil,
+	})
+
+	checkQueue.Enqueue(gollector.Check{
+		Schedule:          &tenSecondPeriodic,
+		SuppressIncidents: false,
+		Meta:              nil,
+		Command: snmp.Command{
+			Ip:        "209.193.82.100",
+			Community: "public",
+			Version:   "2c",
+			Oids:      []string{"1.3.6.1.2.1.2.2.1.7.554"},
 		},
 		Handlers: []gollector.Handler{
 			dummy2.Handler{},
