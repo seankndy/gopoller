@@ -1,12 +1,15 @@
 package gollector
 
 import (
+	"context"
+	"sync"
 	"time"
 )
 
 type Server struct {
-	checkQueue CheckQueue
-	stop       chan struct{}
+	ctx           context.Context
+	cancelContext func()
+	checkQueue    CheckQueue
 
 	// Should server re-enqueue checks back to the check queue after they finish running
 	AutoReEnqueue bool
@@ -24,8 +27,12 @@ type Server struct {
 	OnCheckFinished func(check Check, runDuration time.Duration)
 }
 
-func NewServer(checkQueue CheckQueue) *Server {
+func NewServer(ctx context.Context, checkQueue CheckQueue) *Server {
+	ctx, cancel := context.WithCancel(ctx)
+
 	return &Server{
+		ctx:              ctx,
+		cancelContext:    cancel,
 		checkQueue:       checkQueue,
 		MaxRunningChecks: 100,
 		AutoReEnqueue:    true,
@@ -33,8 +40,6 @@ func NewServer(checkQueue CheckQueue) *Server {
 }
 
 func (s *Server) Run() {
-	s.stop = make(chan struct{})
-
 	runningLimiter := make(chan struct{}, s.MaxRunningChecks)
 	defer close(runningLimiter)
 
@@ -44,7 +49,7 @@ func (s *Server) Run() {
 
 		for loop := true; loop; {
 			select {
-			case <-s.stop:
+			case <-s.ctx.Done():
 				loop = false
 				break
 			default:
@@ -58,15 +63,18 @@ func (s *Server) Run() {
 		}
 	}()
 
+	var wg sync.WaitGroup
 	for loop := true; loop; {
 		select {
-		case <-s.stop:
+		case <-s.ctx.Done():
 			loop = false
 			break
 		case check := <-pendingChecks:
 			runningLimiter <- struct{}{}
 
+			wg.Add(1)
 			go func() {
+				defer wg.Done()
 				defer func() {
 					if s.AutoReEnqueue {
 						s.checkQueue.Enqueue(*check)
@@ -92,6 +100,7 @@ func (s *Server) Run() {
 			}()
 		}
 	}
+	wg.Wait()
 
 	if s.AutoReEnqueue {
 		// put any pending checks back into the queue prior to shut down
@@ -102,5 +111,5 @@ func (s *Server) Run() {
 }
 
 func (s *Server) Stop() {
-	close(s.stop)
+	s.cancelContext()
 }

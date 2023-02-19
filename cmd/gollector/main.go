@@ -1,11 +1,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/seankndy/gollector"
 	"github.com/seankndy/gollector/command/dummy"
 	"github.com/seankndy/gollector/command/ping"
-	"github.com/seankndy/gollector/command/snmp"
 	dummy2 "github.com/seankndy/gollector/handler/dummy"
 	"github.com/seankndy/gollector/handler/rrdcached"
 	"os"
@@ -16,7 +16,7 @@ import (
 
 func main() {
 	checkQueue := gollector.NewMemoryCheckQueue()
-	server := gollector.NewServer(checkQueue)
+	server := gollector.NewServer(context.Background(), checkQueue)
 	server.MaxRunningChecks = 3
 	server.AutoReEnqueue = true
 	server.OnCheckExecuting = func(check gollector.Check) {
@@ -26,6 +26,7 @@ func main() {
 		fmt.Printf("Check finished execution: %v (%.3f seconds)\n", check, runDuration.Seconds())
 	}
 
+	// signal handler
 	handleSignals(server, checkQueue)
 
 	tenSecondPeriodic := gollector.PeriodicSchedule{IntervalSeconds: 10}
@@ -86,24 +87,24 @@ func main() {
 		LastCheck:  nil,
 		LastResult: nil,
 	})
-
-	checkQueue.Enqueue(gollector.Check{
-		Schedule:          &tenSecondPeriodic,
-		SuppressIncidents: false,
-		Meta:              nil,
-		Command: snmp.Command{
-			Ip:        "209.193.82.100",
-			Community: "public",
-			Version:   "2c",
-			Oids:      []string{"1.3.6.1.2.1.2.2.1.7.554"},
-		},
-		Handlers: []gollector.Handler{
-			dummy2.Handler{},
-		},
-		LastCheck:  nil,
-		LastResult: nil,
-	})
-
+	/*
+		checkQueue.Enqueue(gollector.Check{
+			Schedule:          &tenSecondPeriodic,
+			SuppressIncidents: false,
+			Meta:              nil,
+			Command: snmp.Command{
+				Ip:        "209.193.82.100",
+				Community: "public",
+				Version:   "2c",
+				Oids:      []string{"1.3.6.1.2.1.2.2.1.7.554"},
+			},
+			Handlers: []gollector.Handler{
+				dummy2.Handler{},
+			},
+			LastCheck:  nil,
+			LastResult: nil,
+		})
+	*/
 	server.Run()
 
 	fmt.Println("Exiting.")
