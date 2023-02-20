@@ -2,32 +2,62 @@ package snmp
 
 import (
 	"github.com/gosnmp/gosnmp"
+	"time"
 )
 
 type GoSnmpClient struct {
-	Client *gosnmp.GoSNMP
+	client *gosnmp.GoSNMP
 }
 
-func NewGoSnmpClient(client *gosnmp.GoSNMP) *GoSnmpClient {
-	return &GoSnmpClient{client}
+func NewGoSnmpClient(target, community string) *GoSnmpClient {
+	return &GoSnmpClient{&gosnmp.GoSNMP{
+		Target:             target,
+		Port:               161,
+		Transport:          "udp",
+		Community:          community,
+		Version:            gosnmp.Version2c,
+		Retries:            3,
+		Timeout:            2 * time.Second,
+		ExponentialTimeout: true,
+	}}
+}
+
+func (c *GoSnmpClient) SetPort(port uint16) {
+	c.client.Port = port
+}
+
+func (c *GoSnmpClient) SetVersion(version gosnmp.SnmpVersion) {
+	c.client.Version = version
+}
+
+func (c *GoSnmpClient) SetTransport(transport string) {
+	c.client.Transport = transport
+}
+
+func (c *GoSnmpClient) SetTimeout(timeout time.Duration) {
+	c.client.Timeout = timeout
+}
+
+func (c *GoSnmpClient) SetRetries(retries int) {
+	c.client.Retries = retries
 }
 
 func (c *GoSnmpClient) Connect() error {
-	return c.Client.Connect()
+	return c.client.Connect()
 }
 
 func (c *GoSnmpClient) Close() error {
-	return c.Client.Conn.Close()
+	return c.client.Conn.Close()
 }
 
 func (c *GoSnmpClient) Get(oids []string) ([]Object, error) {
 	numOids := len(oids)
 	objects := make([]Object, 0, numOids)
 
-	// if numOids > c.client.MaxOids, chunk them and make ceil(numOids/c.Client.MaxOids) SNMP GET requests
+	// if numOids > c.client.MaxOids, chunk them and make ceil(numOids/c.client.MaxOids) SNMP GET requests
 	var chunk int
-	if numOids > c.Client.MaxOids {
-		chunk = c.Client.MaxOids
+	if numOids > c.client.MaxOids {
+		chunk = c.client.MaxOids
 	} else {
 		chunk = numOids
 	}
@@ -36,7 +66,7 @@ func (c *GoSnmpClient) Get(oids []string) ([]Object, error) {
 			chunk = numOids - offset
 		}
 
-		packet, err := c.Client.Get(oids[offset : offset+chunk])
+		packet, err := c.client.Get(oids[offset : offset+chunk])
 		if err != nil {
 			return nil, err
 		}

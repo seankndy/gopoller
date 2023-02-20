@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/gosnmp/gosnmp"
 	"github.com/seankndy/gollector"
 	"github.com/seankndy/gollector/command/dummy"
 	"github.com/seankndy/gollector/command/ping"
@@ -94,33 +93,9 @@ func main() {
 		Schedule:          &tenSecondPeriodic,
 		SuppressIncidents: false,
 		Meta:              map[string]string{"check6": "check6"},
-		Command: &snmp.Command{
-			Client: snmp.NewGoSnmpClient(&gosnmp.GoSNMP{
-				Target:             "209.193.82.100",
-				Port:               161,
-				Transport:          "udp",
-				Community:          "public",
-				Version:            gosnmp.Version2c,
-				Retries:            3,
-				Timeout:            2 * time.Second,
-				ExponentialTimeout: true,
-			}),
-			OidMonitors: []snmp.OidMonitor{
-				{
-					Oid:               ".1.3.6.1.2.1.2.2.1.7.554",
-					Name:              "ifAdminStatus",
-					PostProcessValue:  1.0,
-					WarnMinThreshold:  0,
-					CritMinThreshold:  0,
-					WarnMaxThreshold:  0,
-					CritMaxThreshold:  0,
-					WarnMinReasonCode: "",
-					CritMinReasonCode: "",
-					WarnMaxReasonCode: "",
-					CritMaxReasonCode: "",
-				},
-			},
-		},
+		Command: snmp.NewCommand("209.193.82.100", "public", []snmp.OidMonitor{
+			*snmp.NewOidMonitor(".1.3.6.1.2.1.2.2.1.7.554", "ifAdminStatus"),
+		}),
 		Handlers: []gollector.Handler{
 			dummy2.Handler{},
 		},

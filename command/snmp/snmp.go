@@ -12,6 +12,13 @@ type Command struct {
 	OidMonitors []OidMonitor
 }
 
+func NewCommand(target, community string, monitors []OidMonitor) *Command {
+	return &Command{
+		Client:      NewGoSnmpClient(target, community),
+		OidMonitors: monitors,
+	}
+}
+
 func (c *Command) Run(check gollector.Check) (result gollector.Result, err error) {
 	err = c.Client.Connect()
 	if err != nil {
