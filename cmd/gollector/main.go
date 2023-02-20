@@ -122,6 +122,7 @@ func handleSignals(server *gollector.Server, checkQueue gollector.CheckQueue) {
 			select {
 			case sig := <-sigCh:
 				if sig == syscall.SIGINT {
+					fmt.Println("Stopping...")
 					server.Stop()
 					// now flush the queue prior to shut down
 					checkQueue.Flush()
