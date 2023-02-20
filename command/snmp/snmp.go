@@ -85,6 +85,7 @@ func (c *Command) Run(check gollector.Check) (result gollector.Result, err error
 					lastValue = big.NewInt(0)
 				}
 
+				// calculate the difference between previous and current result value, accounting for rollover
 				var diff *big.Int
 				if object.Type == Counter64 {
 					diff = calculateCounterDiff(lastValue, value, 64)
