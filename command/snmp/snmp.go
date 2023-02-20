@@ -1,7 +1,6 @@
 package snmp
 
 import (
-	"fmt"
 	"github.com/gosnmp/gosnmp"
 	"github.com/seankndy/gollector"
 	"math/big"
@@ -15,12 +14,17 @@ type Command struct {
 	OidMonitors []OidMonitor
 }
 
-func (c *Command) Run(check gollector.Check) (gollector.Result, error) {
-	err := c.Client.Connect()
+func (c *Command) Run(check gollector.Check) (result gollector.Result, err error) {
+	err = c.Client.Connect()
 	if err != nil {
 		return *gollector.MakeUnknownResult("CMD_FAILURE"), err
 	}
-	defer c.Client.Close()
+	defer func() {
+		errC := c.Client.Close()
+		if errC != nil {
+			err = errC
+		}
+	}()
 
 	// create a map of oid->oidMonitors for fast OidMonitor lookup when processing the result values below
 	oidMonitorsByOid := make(map[string]*OidMonitor, len(c.OidMonitors))
@@ -36,25 +40,64 @@ func (c *Command) Run(check gollector.Check) (gollector.Result, error) {
 	if err != nil {
 		return *gollector.MakeUnknownResult("CMD_FAILURE"), err
 	}
-	for i, object := range objects {
-		oidMonitor := oidMonitorsByOid[object.Oid]
-		fmt.Printf("%d: oid: %s ", i, object.Oid)
 
-		valueI := gosnmp.ToBigInt(object.Value)
-		valueF := big.NewFloat(0).SetPrec(uint(valueI.BitLen()))
-		valueF.SetInt(valueI)
-		valueF.Mul(valueF, big.NewFloat(oidMonitor.PostProcessValue))
+	var resultMetrics []gollector.ResultMetric
+	resultState := gollector.StateUnknown
+	var resultReason string
+
+	for _, object := range objects {
+		oidMonitor := oidMonitorsByOid[object.Oid]
+
+		value := gosnmp.ToBigInt(object.Value)
+
+		var resultMetricValue string
+		var resultMetricType gollector.ResultMetricType
 
 		switch object.Type {
-		case Counter32, Counter64: // variable is counter, calculate difference from last result
-			lastMetric := getChecksLastResultMetricByLabel(&check, oidMonitor.Name)
-			if lastMetric != nil {
-				//lastValueF, _, err := big.ParseFloat(lastMetric.Value, 10, -1, big.ToNearestEven)
+		case Counter32, Counter64: // variable is counter
+			resultMetricType = gollector.ResultMetricCounter
 
+			// get last metric to calculate difference
+			lastMetric := getChecksLastResultMetricByLabel(&check, oidMonitor.Name)
+			var lastValue *big.Int
+			if lastMetric != nil {
+				var ok bool
+				lastValue, ok = new(big.Int).SetString(lastMetric.Value, 10)
+				if !ok {
+					lastValue = big.NewInt(0)
+				}
+			} else {
+				lastValue = big.NewInt(0)
+			}
+
+			var diff *big.Int
+			if object.Type == Counter64 {
+				diff = calculateCounterDiff(lastValue, value, 64)
+			} else {
+				diff = calculateCounterDiff(lastValue, value, 32)
+			}
+
+			if resultState == gollector.StateUnknown {
+				resultState, resultReason = oidMonitor.DetermineResultStateAndReasonFromValue(diff)
 			}
 		default:
+			resultMetricType = gollector.ResultMetricGauge
 
+			if resultState == gollector.StateUnknown {
+				resultState, resultReason = oidMonitor.DetermineResultStateAndReasonFromValue(value)
+			}
+
+			// multiply object value by the post-process value, but only for non-counter types
+			valueF := big.NewFloat(0).SetPrec(uint(value.BitLen())).SetInt(value)
+			resultMetricValue = valueF.Mul(valueF, big.NewFloat(oidMonitor.PostProcessValue)).Text('f', -1)
 		}
+
+		resultMetrics = append(resultMetrics, gollector.ResultMetric{
+			Label: oidMonitor.Name,
+			Value: resultMetricValue,
+			Type:  resultMetricType,
+		})
+
 	}
 
 	return *gollector.MakeUnknownResult(""), nil
@@ -80,6 +123,14 @@ func NewOidMonitor(oid, name string) *OidMonitor {
 		Name:             name,
 		PostProcessValue: 1.0,
 	}
+}
+
+func (o *OidMonitor) DetermineResultStateAndReasonFromValue(value *big.Int) (gollector.ResultState, string) {
+	if value.Cmp(big.NewInt(o.WarnMinThreshold)) < 0 {
+		return gollector.StateWarn, o.WarnMinReasonCode
+	}
+
+	return gollector.StateOk, ""
 }
 
 func getResultStateAndReason(value *big.Float, oidMonitor *OidMonitor) (gollector.ResultState, string) {
@@ -125,4 +176,14 @@ func getSnmpObjects(client Client, oids []string) ([]Object, error) {
 	}
 
 	return objects, nil
+}
+
+// calculateCounterDiff calculates the difference between lastValue and currentValue, taking into account rollover at nbits unsigned bits
+func calculateCounterDiff(lastValue *big.Int, currentValue *big.Int, nbits uint8) *big.Int {
+	maxCounterValue := new(big.Int).SetUint64(uint64(1<<nbits - 1))
+	diff := currentValue.Sub(currentValue, lastValue)
+	if diff.Cmp(big.NewInt(0)) < 0 {
+		diff = diff.Add(diff, maxCounterValue)
+	}
+	return diff
 }

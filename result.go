@@ -6,9 +6,9 @@ type ResultState uint8
 
 const (
 	StateOk      ResultState = 0
-	StateWarn                = 1
-	StateCrit                = 2
-	StateUnknown             = 3
+	StateWarn    ResultState = 1
+	StateCrit    ResultState = 2
+	StateUnknown ResultState = 3
 )
 
 func (s ResultState) String() string {
