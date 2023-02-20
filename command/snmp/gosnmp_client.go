@@ -20,16 +20,16 @@ func (c *GoSnmpClient) Close() error {
 	return c.Client.Conn.Close()
 }
 
-func (c *GoSnmpClient) Get(oids []string) ([]GetResultVariable, error) {
+func (c *GoSnmpClient) Get(oids []string) ([]Object, error) {
 	result, err := c.Client.Get(oids)
 	if err != nil {
 		return nil, err
 	}
 
 	// transform gosnmp variables into GetResults
-	getResults := make([]GetResultVariable, len(oids))
+	getResults := make([]Object, len(oids))
 	for _, variable := range result.Variables {
-		getResults = append(getResults, GetResultVariable{
+		getResults = append(getResults, Object{
 			Type:  Asn1BER(variable.Type),
 			Value: variable.Value,
 			Oid:   variable.Name,

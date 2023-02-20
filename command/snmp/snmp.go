@@ -24,7 +24,7 @@ func (c *Command) Run(check gollector.Check) (gollector.Result, error) {
 
 	// create a map of oid->oidMonitors for fast OidMonitor lookup when processing the result values below
 	oidMonitorsByOid := make(map[string]*OidMonitor, len(c.OidMonitors))
-	// build raw slice of oids from c.OidMonitors to pass to getSnmpVariables()
+	// build raw slice of oids from c.OidMonitors to pass to getSnmpObjects()
 	rawOids := make([]string, len(c.OidMonitors))
 	for k, _ := range c.OidMonitors {
 		oidMonitor := &c.OidMonitors[k]
@@ -32,20 +32,20 @@ func (c *Command) Run(check gollector.Check) (gollector.Result, error) {
 		oidMonitorsByOid[oidMonitor.Oid] = oidMonitor
 	}
 
-	variables, err := getSnmpVariables(c.Client, rawOids)
+	objects, err := getSnmpObjects(c.Client, rawOids)
 	if err != nil {
 		return *gollector.MakeUnknownResult("CMD_FAILURE"), err
 	}
-	for i, variable := range variables {
-		oidMonitor := oidMonitorsByOid[variable.Oid]
-		fmt.Printf("%d: oid: %s ", i, variable.Oid)
+	for i, object := range objects {
+		oidMonitor := oidMonitorsByOid[object.Oid]
+		fmt.Printf("%d: oid: %s ", i, object.Oid)
 
-		valueI := gosnmp.ToBigInt(variable.Value)
+		valueI := gosnmp.ToBigInt(object.Value)
 		valueF := big.NewFloat(0).SetPrec(uint(valueI.BitLen()))
 		valueF.SetInt(valueI)
 		valueF.Mul(valueF, big.NewFloat(oidMonitor.PostProcessValue))
 
-		switch variable.Type {
+		switch object.Type {
 		case Counter32, Counter64: // variable is counter, calculate difference from last result
 			lastMetric := getChecksLastResultMetricByLabel(&check, oidMonitor.Name)
 			if lastMetric != nil {
@@ -98,9 +98,9 @@ func getChecksLastResultMetricByLabel(check *gollector.Check, label string) *gol
 	return nil
 }
 
-func getSnmpVariables(client Client, oids []string) ([]GetResultVariable, error) {
+func getSnmpObjects(client Client, oids []string) ([]Object, error) {
 	numOids := len(oids)
-	variables := make([]GetResultVariable, 0, numOids)
+	objects := make([]Object, 0, numOids)
 
 	// if numOids > snmp.MaxOids, chunk them and make ceil(numOids/snmp.MaxOids) SNMP GET requests
 	var chunk int
@@ -114,15 +114,15 @@ func getSnmpVariables(client Client, oids []string) ([]GetResultVariable, error)
 			chunk = numOids - offset
 		}
 
-		vars, err := client.Get(oids[offset : offset+chunk])
+		objs, err := client.Get(oids[offset : offset+chunk])
 		if err != nil {
 			return nil, err
 		}
 
-		for _, v := range vars {
-			variables = append(variables, v)
+		for _, v := range objs {
+			objects = append(objects, v)
 		}
 	}
 
-	return variables, nil
+	return objects, nil
 }

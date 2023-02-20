@@ -3,7 +3,7 @@ package snmp
 type Client interface {
 	Connect() error
 	Close() error
-	Get(oids []string) ([]GetResultVariable, error)
+	Get(oids []string) ([]Object, error)
 	MaxOids() int
 }
 
@@ -36,7 +36,7 @@ const (
 	EndOfMibView      Asn1BER = 0x82
 )
 
-type GetResultVariable struct {
+type Object struct {
 	Type  Asn1BER
 	Value any
 	Oid   string
