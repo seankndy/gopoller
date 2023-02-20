@@ -5,10 +5,10 @@ import (
 	"github.com/gosnmp/gosnmp"
 	"github.com/seankndy/gollector"
 	"math/big"
-	"time"
 )
 
 type Command struct {
+	Client      Client
 	Ip          string
 	Community   string
 	Version     string
@@ -16,23 +16,11 @@ type Command struct {
 }
 
 func (c *Command) Run(check gollector.Check) (gollector.Result, error) {
-	snmp := &gosnmp.GoSNMP{
-		Target:             c.Ip,
-		Port:               161,
-		Transport:          "udp",
-		Community:          c.Community,
-		Version:            c.getSnmpVersionForGoSnmp(),
-		Timeout:            2 * time.Second,
-		Retries:            3,
-		ExponentialTimeout: true,
-		MaxOids:            gosnmp.MaxOids,
-	}
-
-	err := snmp.Connect()
+	err := c.Client.Connect()
 	if err != nil {
 		return *gollector.MakeUnknownResult("CMD_FAILURE"), err
 	}
-	defer snmp.Conn.Close()
+	defer c.Client.Close()
 
 	// create a map of oid->oidMonitors for fast OidMonitor lookup when processing the result values below
 	oidMonitorsByOid := make(map[string]*OidMonitor, len(c.OidMonitors))
@@ -44,13 +32,13 @@ func (c *Command) Run(check gollector.Check) (gollector.Result, error) {
 		oidMonitorsByOid[oidMonitor.Oid] = oidMonitor
 	}
 
-	variables, err := getSnmpVariables(snmp, rawOids)
+	variables, err := getSnmpVariables(c.Client, rawOids)
 	if err != nil {
 		return *gollector.MakeUnknownResult("CMD_FAILURE"), err
 	}
 	for i, variable := range variables {
-		oidMonitor := oidMonitorsByOid[variable.Name]
-		fmt.Printf("%d: oid: %s ", i, variable.Name)
+		oidMonitor := oidMonitorsByOid[variable.Oid]
+		fmt.Printf("%d: oid: %s ", i, variable.Oid)
 
 		valueI := gosnmp.ToBigInt(variable.Value)
 		valueF := big.NewFloat(0).SetPrec(uint(valueI.BitLen()))
@@ -58,7 +46,7 @@ func (c *Command) Run(check gollector.Check) (gollector.Result, error) {
 		valueF.Mul(valueF, big.NewFloat(oidMonitor.PostProcessValue))
 
 		switch variable.Type {
-		case gosnmp.Counter32, gosnmp.Counter64: // variable is counter, calculate difference from last result
+		case Counter32, Counter64: // variable is counter, calculate difference from last result
 			lastMetric := getChecksLastResultMetricByLabel(&check, oidMonitor.Name)
 			if lastMetric != nil {
 				//lastValueF, _, err := big.ParseFloat(lastMetric.Value, 10, -1, big.ToNearestEven)
@@ -70,17 +58,6 @@ func (c *Command) Run(check gollector.Check) (gollector.Result, error) {
 	}
 
 	return *gollector.MakeUnknownResult(""), nil
-}
-
-func (c *Command) getSnmpVersionForGoSnmp() gosnmp.SnmpVersion {
-	switch c.Version {
-	case "1":
-		return gosnmp.Version1
-	case "3":
-		return gosnmp.Version3
-	default:
-		return gosnmp.Version2c
-	}
 }
 
 type OidMonitor struct {
@@ -121,14 +98,14 @@ func getChecksLastResultMetricByLabel(check *gollector.Check, label string) *gol
 	return nil
 }
 
-func getSnmpVariables(snmp *gosnmp.GoSNMP, oids []string) ([]gosnmp.SnmpPDU, error) {
+func getSnmpVariables(client Client, oids []string) ([]GetResultVariable, error) {
 	numOids := len(oids)
-	variables := make([]gosnmp.SnmpPDU, 0, numOids)
+	variables := make([]GetResultVariable, 0, numOids)
 
 	// if numOids > snmp.MaxOids, chunk them and make ceil(numOids/snmp.MaxOids) SNMP GET requests
 	var chunk int
-	if numOids > snmp.MaxOids {
-		chunk = snmp.MaxOids
+	if numOids > client.MaxOids() {
+		chunk = client.MaxOids()
 	} else {
 		chunk = numOids
 	}
@@ -137,13 +114,13 @@ func getSnmpVariables(snmp *gosnmp.GoSNMP, oids []string) ([]gosnmp.SnmpPDU, err
 			chunk = numOids - offset
 		}
 
-		result, err := snmp.Get(oids[offset : offset+chunk])
+		vars, err := client.Get(oids[offset : offset+chunk])
 		if err != nil {
 			return nil, err
 		}
 
-		for _, variable := range result.Variables {
-			variables = append(variables, variable)
+		for _, v := range vars {
+			variables = append(variables, v)
 		}
 	}
 
