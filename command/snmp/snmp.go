@@ -1,6 +1,7 @@
 package snmp
 
 import (
+	"fmt"
 	"github.com/gosnmp/gosnmp"
 	"github.com/seankndy/gollector"
 	"math/big"
@@ -8,9 +9,6 @@ import (
 
 type Command struct {
 	Client      Client
-	Ip          string
-	Community   string
-	Version     string
 	OidMonitors []OidMonitor
 }
 
@@ -31,13 +29,13 @@ func (c *Command) Run(check gollector.Check) (result gollector.Result, err error
 	// build raw slice of oids from c.OidMonitors to pass to getSnmpObjects()
 	rawOids := make([]string, len(c.OidMonitors))
 	for k, _ := range c.OidMonitors {
-		oidMonitor := &c.OidMonitors[k]
-		rawOids[k] = oidMonitor.Oid
-		oidMonitorsByOid[oidMonitor.Oid] = oidMonitor
+		rawOids[k] = c.OidMonitors[k].Oid
+		oidMonitorsByOid[c.OidMonitors[k].Oid] = &c.OidMonitors[k]
 	}
 
-	objects, err := getSnmpObjects(c.Client, rawOids)
+	objects, err := c.Client.Get(rawOids)
 	if err != nil {
+		fmt.Println(err)
 		return *gollector.MakeUnknownResult("CMD_FAILURE"), err
 	}
 
@@ -46,45 +44,55 @@ func (c *Command) Run(check gollector.Check) (result gollector.Result, err error
 	var resultReason string
 
 	for _, object := range objects {
-		oidMonitor := oidMonitorsByOid[object.Oid]
+		oidMonitor, ok := oidMonitorsByOid[object.Oid]
+		if !ok {
+			return *gollector.MakeUnknownResult("CMD_FAILURE"), nil
+		}
 
 		value := gosnmp.ToBigInt(object.Value)
 
 		var resultMetricValue string
 		var resultMetricType gollector.ResultMetricType
 
-		switch object.Type {
-		case Counter32, Counter64: // variable is counter
-			resultMetricType = gollector.ResultMetricCounter
+		// for counter types, we compare the difference between the last result and this current result to the
+		// monitor's thresholds, and also we do not apply PostProcessValue to the result
+		// for non-counter types, we compare the raw value to the monitor thresholds, and we do apply PostProcessValue
+		// to the value
 
-			// get last metric to calculate difference
-			lastMetric := getChecksLastResultMetricByLabel(&check, oidMonitor.Name)
-			var lastValue *big.Int
-			if lastMetric != nil {
-				var ok bool
-				lastValue, ok = new(big.Int).SetString(lastMetric.Value, 10)
-				if !ok {
+		if object.Type == Counter64 || object.Type == Counter32 {
+			resultMetricType = gollector.ResultMetricCounter
+			resultMetricValue = value.Text(10)
+
+			// if state is still Unknown, check if this snmp object exceeds any thresholds
+			if resultState == gollector.StateUnknown {
+				// get last metric to calculate difference
+				lastMetric := getChecksLastResultMetricByLabel(&check, oidMonitor.Name)
+				var lastValue *big.Int
+				if lastMetric != nil {
+					var ok bool
+					lastValue, ok = new(big.Int).SetString(lastMetric.Value, 10)
+					if !ok {
+						lastValue = big.NewInt(0)
+					}
+				} else {
 					lastValue = big.NewInt(0)
 				}
-			} else {
-				lastValue = big.NewInt(0)
-			}
 
-			var diff *big.Int
-			if object.Type == Counter64 {
-				diff = calculateCounterDiff(lastValue, value, 64)
-			} else {
-				diff = calculateCounterDiff(lastValue, value, 32)
-			}
+				var diff *big.Int
+				if object.Type == Counter64 {
+					diff = calculateCounterDiff(lastValue, value, 64)
+				} else {
+					diff = calculateCounterDiff(lastValue, value, 32)
+				}
 
-			if resultState == gollector.StateUnknown {
-				resultState, resultReason = oidMonitor.DetermineResultStateAndReasonFromValue(diff)
+				resultState, resultReason = oidMonitor.determineResultStateAndReasonFromResultValue(diff)
 			}
-		default:
+		} else {
 			resultMetricType = gollector.ResultMetricGauge
 
+			// if state is still Unknown, check if this snmp object exceeds any thresholds
 			if resultState == gollector.StateUnknown {
-				resultState, resultReason = oidMonitor.DetermineResultStateAndReasonFromValue(value)
+				resultState, resultReason = oidMonitor.determineResultStateAndReasonFromResultValue(value)
 			}
 
 			// multiply object value by the post-process value, but only for non-counter types
@@ -100,7 +108,7 @@ func (c *Command) Run(check gollector.Check) (result gollector.Result, err error
 
 	}
 
-	return *gollector.MakeUnknownResult(""), nil
+	return *gollector.NewResult(resultState, resultReason, resultMetrics), nil
 }
 
 type OidMonitor struct {
@@ -125,15 +133,17 @@ func NewOidMonitor(oid, name string) *OidMonitor {
 	}
 }
 
-func (o *OidMonitor) DetermineResultStateAndReasonFromValue(value *big.Int) (gollector.ResultState, string) {
-	if value.Cmp(big.NewInt(o.WarnMinThreshold)) < 0 {
+func (o *OidMonitor) determineResultStateAndReasonFromResultValue(value *big.Int) (gollector.ResultState, string) {
+	if o.CritMinReasonCode != "" && value.Cmp(big.NewInt(o.CritMinThreshold)) < 0 {
+		return gollector.StateCrit, o.CritMinReasonCode
+	} else if o.WarnMinReasonCode != "" && value.Cmp(big.NewInt(o.WarnMinThreshold)) < 0 {
 		return gollector.StateWarn, o.WarnMinReasonCode
+	} else if o.CritMaxReasonCode != "" && value.Cmp(big.NewInt(o.CritMaxThreshold)) > 0 {
+		return gollector.StateCrit, o.CritMaxReasonCode
+	} else if o.WarnMaxReasonCode != "" && value.Cmp(big.NewInt(o.WarnMaxThreshold)) > 0 {
+		return gollector.StateWarn, o.WarnMaxReasonCode
 	}
 
-	return gollector.StateOk, ""
-}
-
-func getResultStateAndReason(value *big.Float, oidMonitor *OidMonitor) (gollector.ResultState, string) {
 	return gollector.StateOk, ""
 }
 
@@ -147,35 +157,6 @@ func getChecksLastResultMetricByLabel(check *gollector.Check, label string) *gol
 	}
 
 	return nil
-}
-
-func getSnmpObjects(client Client, oids []string) ([]Object, error) {
-	numOids := len(oids)
-	objects := make([]Object, 0, numOids)
-
-	// if numOids > snmp.MaxOids, chunk them and make ceil(numOids/snmp.MaxOids) SNMP GET requests
-	var chunk int
-	if numOids > client.MaxOids() {
-		chunk = client.MaxOids()
-	} else {
-		chunk = numOids
-	}
-	for offset := 0; offset < numOids; offset += chunk {
-		if chunk > numOids-offset {
-			chunk = numOids - offset
-		}
-
-		objs, err := client.Get(oids[offset : offset+chunk])
-		if err != nil {
-			return nil, err
-		}
-
-		for _, v := range objs {
-			objects = append(objects, v)
-		}
-	}
-
-	return objects, nil
 }
 
 // calculateCounterDiff calculates the difference between lastValue and currentValue, taking into account rollover at nbits unsigned bits

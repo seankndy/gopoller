@@ -4,7 +4,6 @@ type Client interface {
 	Connect() error
 	Close() error
 	Get(oids []string) ([]Object, error)
-	MaxOids() int
 }
 
 // Asn1BER is the type of the SNMP PDU

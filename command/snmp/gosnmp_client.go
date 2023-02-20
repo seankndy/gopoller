@@ -9,7 +9,7 @@ type GoSnmpClient struct {
 }
 
 func NewGoSnmpClient(client *gosnmp.GoSNMP) *GoSnmpClient {
-	return &GoSnmpClient{Client: client}
+	return &GoSnmpClient{client}
 }
 
 func (c *GoSnmpClient) Connect() error {
@@ -21,34 +21,35 @@ func (c *GoSnmpClient) Close() error {
 }
 
 func (c *GoSnmpClient) Get(oids []string) ([]Object, error) {
-	result, err := c.Client.Get(oids)
-	if err != nil {
-		return nil, err
+	numOids := len(oids)
+	objects := make([]Object, 0, numOids)
+
+	// if numOids > c.client.MaxOids, chunk them and make ceil(numOids/c.Client.MaxOids) SNMP GET requests
+	var chunk int
+	if numOids > c.Client.MaxOids {
+		chunk = c.Client.MaxOids
+	} else {
+		chunk = numOids
+	}
+	for offset := 0; offset < numOids; offset += chunk {
+		if chunk > numOids-offset {
+			chunk = numOids - offset
+		}
+
+		packet, err := c.Client.Get(oids[offset : offset+chunk])
+		if err != nil {
+			return nil, err
+		}
+
+		// transform gosnmp variables into Objects
+		for _, v := range packet.Variables {
+			objects = append(objects, Object{
+				Type:  Asn1BER(v.Type),
+				Value: v.Value,
+				Oid:   v.Name,
+			})
+		}
 	}
 
-	// transform gosnmp variables into GetResults
-	getResults := make([]Object, len(oids))
-	for _, variable := range result.Variables {
-		getResults = append(getResults, Object{
-			Type:  Asn1BER(variable.Type),
-			Value: variable.Value,
-			Oid:   variable.Name,
-		})
-	}
-	return getResults, nil
-}
-
-func (c *GoSnmpClient) MaxOids() int {
-	return c.Client.MaxOids
-}
-
-func getSnmpVersionForGoSnmp(version string) gosnmp.SnmpVersion {
-	switch version {
-	case "1":
-		return gosnmp.Version1
-	case "3":
-		return gosnmp.Version3
-	default:
-		return gosnmp.Version2c
-	}
+	return objects, nil
 }
