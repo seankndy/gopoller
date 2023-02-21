@@ -2,6 +2,7 @@ package snmp
 
 import (
 	"errors"
+	"fmt"
 	"github.com/seankndy/gollector"
 	"github.com/stretchr/testify/mock"
 	"reflect"
@@ -172,7 +173,249 @@ func TestPostProcessValuesAreNotAppliedToCounters(t *testing.T) {
 	}
 }
 
-// TODO: test oid monitor thresholds
+func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
+	tests := []struct {
+		name            string
+		check           gollector.Check
+		snmpObjects     []Object
+		oidMonitors     []OidMonitor
+		wantResultState gollector.ResultState
+		wantReasonCode  string
+	}{
+		{
+			name:  "warn_min",
+			check: gollector.Check{},
+			snmpObjects: []Object{
+				{
+					Type:  Uinteger32,
+					Value: uint32(1234566),
+					Oid:   "1.2.3.4.5.6.7.8",
+				},
+			},
+			oidMonitors: []OidMonitor{
+				{
+					Oid:               "1.2.3.4.5.6.7.8",
+					Name:              "foo1",
+					PostProcessValue:  1.0,
+					WarnMinThreshold:  1234567,
+					WarnMinReasonCode: "FOO_MIN",
+				},
+			},
+			wantResultState: gollector.StateWarn,
+			wantReasonCode:  "FOO_MIN",
+		},
+		{
+			name:  "warn_max",
+			check: gollector.Check{},
+			snmpObjects: []Object{
+				{
+					Type:  Uinteger32,
+					Value: uint32(1234568),
+					Oid:   "1.2.3.4.5.6.7.8",
+				},
+			},
+			oidMonitors: []OidMonitor{
+				{
+					Oid:               "1.2.3.4.5.6.7.8",
+					Name:              "foo1",
+					PostProcessValue:  1.0,
+					WarnMaxThreshold:  1234567,
+					WarnMaxReasonCode: "FOO_MAX",
+				},
+			},
+			wantResultState: gollector.StateWarn,
+			wantReasonCode:  "FOO_MAX",
+		},
+		{
+			name:  "crit_min",
+			check: gollector.Check{},
+			snmpObjects: []Object{
+				{
+					Type:  Uinteger32,
+					Value: uint32(1234566),
+					Oid:   "1.2.3.4.5.6.7.8",
+				},
+			},
+			oidMonitors: []OidMonitor{
+				{
+					Oid:               "1.2.3.4.5.6.7.8",
+					Name:              "foo1",
+					PostProcessValue:  1.0,
+					CritMinThreshold:  1234567,
+					CritMinReasonCode: "FOO_MIN",
+				},
+			},
+			wantResultState: gollector.StateCrit,
+			wantReasonCode:  "FOO_MIN",
+		},
+		{
+			name:  "crit_max",
+			check: gollector.Check{},
+			snmpObjects: []Object{
+				{
+					Type:  Uinteger32,
+					Value: uint32(1234568),
+					Oid:   "1.2.3.4.5.6.7.8",
+				},
+			},
+			oidMonitors: []OidMonitor{
+				{
+					Oid:               "1.2.3.4.5.6.7.8",
+					Name:              "foo1",
+					PostProcessValue:  1.0,
+					CritMaxThreshold:  1234567,
+					CritMaxReasonCode: "FOO_MAX",
+				},
+			},
+			wantResultState: gollector.StateCrit,
+			wantReasonCode:  "FOO_MAX",
+		},
+		{
+			name:  "ok",
+			check: gollector.Check{},
+			snmpObjects: []Object{
+				{
+					Type:  Uinteger32,
+					Value: uint32(500),
+					Oid:   "1.2.3.4.5.6.7.8",
+				},
+			},
+			oidMonitors: []OidMonitor{
+				{
+					Oid:               "1.2.3.4.5.6.7.8",
+					Name:              "foo1",
+					PostProcessValue:  1.0,
+					WarnMinThreshold:  100,
+					WarnMinReasonCode: "WARN_MIN",
+					WarnMaxThreshold:  1000,
+					WarnMaxReasonCode: "WARN_MAX",
+					CritMinThreshold:  50,
+					CritMinReasonCode: "CRIT_MIN",
+					CritMaxThreshold:  1500,
+					CritMaxReasonCode: "CRIT_MAX",
+				},
+			},
+			wantResultState: gollector.StateOk,
+			wantReasonCode:  "",
+		},
+		{
+			name: "counter_rollover32_warn_min",
+			check: gollector.Check{LastResult: gollector.NewResult(gollector.StateOk, "", []gollector.ResultMetric{
+				{
+					Label: "foo1",
+					Value: "4294962295",
+					Type:  gollector.ResultMetricCounter,
+				},
+			})},
+			snmpObjects: []Object{
+				{
+					Type:  Counter32,
+					Value: uint32(4999), // previous 4294962295, current 4999, delta 9999
+					Oid:   "1.2.3.4.5.6.7.8",
+				},
+			},
+			oidMonitors: []OidMonitor{
+				{
+					Oid:               "1.2.3.4.5.6.7.8",
+					Name:              "foo1",
+					CritMinThreshold:  9998,
+					CritMinReasonCode: "CRIT_MIN",
+					WarnMinThreshold:  10000,
+					WarnMinReasonCode: "WARN_MIN",
+				},
+			},
+			wantResultState: gollector.StateWarn,
+			wantReasonCode:  "WARN_MIN",
+		},
+		{
+			name: "counter_rollover64_warn_min",
+			check: gollector.Check{LastResult: gollector.NewResult(gollector.StateOk, "", []gollector.ResultMetric{
+				{
+					Label: "foo1",
+					Value: "18446744073709551515",
+					Type:  gollector.ResultMetricCounter,
+				},
+			})},
+			snmpObjects: []Object{
+				{
+					Type:  Counter64,
+					Value: uint32(1099), // previous 18446744073709551515, current 1099, delta 1199
+					Oid:   "1.2.3.4.5.6.7.8",
+				},
+			},
+			oidMonitors: []OidMonitor{
+				{
+					Oid:               "1.2.3.4.5.6.7.8",
+					Name:              "foo1",
+					CritMinThreshold:  1198,
+					CritMinReasonCode: "CRIT_MIN",
+					WarnMinThreshold:  1200,
+					WarnMinReasonCode: "WARN_MIN",
+				},
+			},
+			wantResultState: gollector.StateWarn,
+			wantReasonCode:  "WARN_MIN",
+		},
+		{
+			name: "crit_before_warn",
+			check: gollector.Check{LastResult: gollector.NewResult(gollector.StateOk, "", []gollector.ResultMetric{
+				{
+					Label: "foo1",
+					Value: "18446744073709551515",
+					Type:  gollector.ResultMetricCounter,
+				},
+			})},
+			snmpObjects: []Object{
+				{
+					Type:  Counter64,
+					Value: uint32(1099), // previous 18446744073709551515, current 1099, delta 1199
+					Oid:   "1.2.3.4.5.6.7.8",
+				},
+			},
+			oidMonitors: []OidMonitor{
+				{
+					Oid:               "1.2.3.4.5.6.7.8",
+					Name:              "foo1",
+					CritMinThreshold:  1200,
+					CritMinReasonCode: "CRIT_MIN",
+					WarnMinThreshold:  1200,
+					WarnMinReasonCode: "WARN_MIN",
+				},
+			},
+			wantResultState: gollector.StateCrit,
+			wantReasonCode:  "CRIT_MIN",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			clientMock := new(MockClient)
+			clientMock.On("Connect").Return(nil)
+			clientMock.On("Close").Return(nil)
+			clientMock.On("Get", mock.Anything).Return(tt.snmpObjects, nil)
+
+			cmd := &Command{Client: clientMock, OidMonitors: tt.oidMonitors}
+			result, _ := cmd.Run(tt.check)
+
+			fmt.Println(result)
+
+			{
+				want := tt.wantResultState
+				got := result.State
+				if want != got {
+					t.Errorf("wanted result state %v, got %v", want, got)
+				}
+			}
+			{
+				want := tt.wantReasonCode
+				got := result.ReasonCode
+				if want != got {
+					t.Errorf("wanted reason code %v, got %v", want, got)
+				}
+			}
+		})
+	}
+}
 
 type MockClient struct {
 	mock.Mock

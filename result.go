@@ -83,7 +83,7 @@ type ResultMetricType uint8
 
 const (
 	ResultMetricCounter ResultMetricType = 1
-	ResultMetricGauge                    = 2
+	ResultMetricGauge   ResultMetricType = 2
 )
 
 type ResultMetric struct {
