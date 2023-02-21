@@ -42,7 +42,6 @@ func (c *Command) Run(check gollector.Check) (result gollector.Result, err error
 
 	objects, err := c.Client.Get(rawOids)
 	if err != nil {
-		fmt.Println(err)
 		return *gollector.MakeUnknownResult("CMD_FAILURE"), err
 	}
 
@@ -51,9 +50,15 @@ func (c *Command) Run(check gollector.Check) (result gollector.Result, err error
 	var resultReason string
 
 	for _, object := range objects {
-		oidMonitor, ok := oidMonitorsByOid[object.Oid]
-		if !ok {
-			return *gollector.MakeUnknownResult("CMD_FAILURE"), nil
+		oidMonitor := oidMonitorsByOid[object.Oid]
+		if oidMonitor == nil {
+			if object.Oid[:1] == "." {
+				oidMonitor = oidMonitorsByOid[object.Oid[1:]]
+			}
+		}
+		if oidMonitor == nil {
+			return *gollector.MakeUnknownResult("CMD_FAILURE"),
+				fmt.Errorf("snmp.Command.Run(): oid %s could not be found in monitors", object.Oid)
 		}
 
 		value := gosnmp.ToBigInt(object.Value)
