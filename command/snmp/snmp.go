@@ -98,10 +98,6 @@ func (c *Command) Run(check gollector.Check) (result gollector.Result, err error
 					diff = calculateCounterDiff(lastValue, value, 32)
 				}
 
-				fmt.Println(lastValue.Text(10))
-				fmt.Println(value.Text(10))
-				fmt.Println(diff)
-
 				resultState, resultReason = oidMonitor.determineResultStateAndReasonFromResultValue(diff)
 			}
 		} else {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/seankndy/gollector"
+	"github.com/seankndy/gollector/command/dns"
 	"github.com/seankndy/gollector/command/dummy"
 	"github.com/seankndy/gollector/command/ping"
 	"github.com/seankndy/gollector/command/snmp"
@@ -22,6 +23,9 @@ func main() {
 	server.AutoReEnqueue = true
 	server.OnCheckExecuting = func(check gollector.Check) {
 		fmt.Printf("Check beginning execution: %v\n", check)
+	}
+	server.OnCheckErrored = func(check gollector.Check, err error) {
+		fmt.Printf("CHECK ERROR: %v", err)
 	}
 	server.OnCheckFinished = func(check gollector.Check, runDuration time.Duration) {
 		fmt.Printf("Check finished execution: %v (%.3f seconds)\n", check, runDuration.Seconds())
@@ -96,6 +100,27 @@ func main() {
 		Command: snmp.NewCommand("209.193.82.100", "public", []snmp.OidMonitor{
 			*snmp.NewOidMonitor(".1.3.6.1.2.1.2.2.1.7.554", "ifAdminStatus"),
 		}),
+		Handlers: []gollector.Handler{
+			dummy2.Handler{},
+		},
+		LastCheck:  nil,
+		LastResult: nil,
+	})
+
+	checkQueue.Enqueue(gollector.Check{
+		Schedule:          &tenSecondPeriodic,
+		SuppressIncidents: false,
+		Meta:              map[string]string{"check7": "check7"},
+		Command: &dns.Command{
+			ServerIp:          "209.193.72.2",
+			ServerPort:        53,
+			ServerTimeout:     1 * time.Microsecond,
+			Query:             "www.vcn.com",
+			QueryType:         dns.Host,
+			Expected:          &[]string{"209.193.72.54"},
+			WarnRespThreshold: 20 * time.Millisecond,
+			CritRespThreshold: 40 * time.Millisecond,
+		},
 		Handlers: []gollector.Handler{
 			dummy2.Handler{},
 		},

@@ -91,11 +91,11 @@ func (c *Check) runResultHandlerProcessing(result Result, newIncident *Incident)
 		close(errorCh)
 	}()
 
-	var error error
+	var errors error
 	for err := range errorCh {
-		error = multierror.Append(error, err)
+		errors = multierror.Append(errors, err)
 	}
-	return error
+	return errors
 }
 
 func (c *Check) makeNewIncidentIfJustified(result Result) *Incident {
@@ -127,7 +127,7 @@ type Command interface {
 }
 
 // Handler mutates and/or processes a Check and it's latest result data
-// Process() does not mutate any data, only read
+// Process() does not mutate any data, only read.  newIncident is a pointer only because it can be nil.
 type Handler interface {
 	Mutate(check *Check, newResult *Result, newIncident *Incident)
 	Process(check Check, newResult Result, newIncident *Incident) error

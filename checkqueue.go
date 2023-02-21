@@ -12,7 +12,7 @@ type CheckQueue interface {
 	Count() uint64
 }
 
-type memoryCheckQueue struct {
+type MemoryCheckQueue struct {
 	checks      map[int64][]Check
 	total       uint64
 	priorities  map[int64]int64
@@ -20,15 +20,15 @@ type memoryCheckQueue struct {
 	mu          sync.RWMutex
 }
 
-func NewMemoryCheckQueue() *memoryCheckQueue {
-	return &memoryCheckQueue{
+func NewMemoryCheckQueue() *MemoryCheckQueue {
+	return &MemoryCheckQueue{
 		checks:      make(map[int64][]Check),
 		priorities:  make(map[int64]int64),
 		minPriority: math.MaxInt64,
 	}
 }
 
-func (m *memoryCheckQueue) Enqueue(check Check) {
+func (m *MemoryCheckQueue) Enqueue(check Check) {
 	priority := check.DueAt().Unix()
 
 	m.mu.Lock()
@@ -44,7 +44,7 @@ func (m *memoryCheckQueue) Enqueue(check Check) {
 	}
 }
 
-func (m *memoryCheckQueue) Dequeue() *Check {
+func (m *MemoryCheckQueue) Dequeue() *Check {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -80,7 +80,7 @@ func (m *memoryCheckQueue) Dequeue() *Check {
 	return &check
 }
 
-func (m *memoryCheckQueue) Flush() {
+func (m *MemoryCheckQueue) Flush() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -90,7 +90,7 @@ func (m *memoryCheckQueue) Flush() {
 	m.total = 0
 }
 
-func (m *memoryCheckQueue) Count() uint64 {
+func (m *MemoryCheckQueue) Count() uint64 {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 

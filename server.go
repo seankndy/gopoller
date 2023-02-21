@@ -47,6 +47,10 @@ func (s *Server) Run() {
 	go func() { // populate pendingCheck channel from queue indefinitely
 		defer close(pendingChecks)
 
+		// we have this in its own goroutine in case checkQueue.Dequeue() takes some time to return and the main
+		// check loop (below) is blocking by the runningLimiter.  this allows us to continue to fill the pending
+		// checks queue and make the system more responsive
+
 		for loop := true; loop; {
 			select {
 			case <-s.ctx.Done():
