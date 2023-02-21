@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/seankndy/gollector"
 	"github.com/seankndy/gollector/command/dns"
-	"github.com/seankndy/gollector/command/dummy"
 	"github.com/seankndy/gollector/command/ping"
 	"github.com/seankndy/gollector/command/snmp"
 	dummy2 "github.com/seankndy/gollector/handler/dummy"
@@ -39,43 +38,7 @@ func main() {
 	checkQueue.Enqueue(gollector.Check{
 		Schedule:          &tenSecondPeriodic,
 		SuppressIncidents: false,
-		Meta:              nil,
-		Command:           dummy.Command{Message: "check 1"},
-		LastCheck:         nil,
-		LastResult:        nil,
-	})
-
-	checkQueue.Enqueue(gollector.Check{
-		Schedule:          &tenSecondPeriodic,
-		SuppressIncidents: false,
-		Meta:              nil,
-		Command:           dummy.Command{Message: "check 2"},
-		LastCheck:         nil,
-		LastResult:        nil,
-	})
-
-	checkQueue.Enqueue(gollector.Check{
-		Schedule:          &tenSecondPeriodic,
-		SuppressIncidents: false,
-		Meta:              nil,
-		Command:           dummy.Command{Message: "check 3"},
-		LastCheck:         nil,
-		LastResult:        nil,
-	})
-
-	checkQueue.Enqueue(gollector.Check{
-		Schedule:          &tenSecondPeriodic,
-		SuppressIncidents: false,
-		Meta:              nil,
-		Command:           dummy.Command{Message: "check 4"},
-		LastCheck:         nil,
-		LastResult:        nil,
-	})
-
-	checkQueue.Enqueue(gollector.Check{
-		Schedule:          &tenSecondPeriodic,
-		SuppressIncidents: false,
-		Meta:              map[string]string{"check5": "check5"},
+		Meta:              map[string]string{"check1": "check1"},
 		Command: ping.Command{
 			Ip:                      "209.193.82.100",
 			Count:                   5,
@@ -96,7 +59,7 @@ func main() {
 	checkQueue.Enqueue(gollector.Check{
 		Schedule:          &tenSecondPeriodic,
 		SuppressIncidents: false,
-		Meta:              map[string]string{"check6": "check6"},
+		Meta:              map[string]string{"check2": "check2"},
 		Command: snmp.NewCommand("209.193.82.100", "public", []snmp.OidMonitor{
 			*snmp.NewOidMonitor(".1.3.6.1.2.1.2.2.1.7.554", "ifAdminStatus"),
 		}),
@@ -110,11 +73,11 @@ func main() {
 	checkQueue.Enqueue(gollector.Check{
 		Schedule:          &tenSecondPeriodic,
 		SuppressIncidents: false,
-		Meta:              map[string]string{"check7": "check7"},
+		Meta:              map[string]string{"check3": "check3"},
 		Command: &dns.Command{
 			ServerIp:          "209.193.72.2",
 			ServerPort:        53,
-			ServerTimeout:     1 * time.Microsecond,
+			ServerTimeout:     3 * time.Second,
 			Query:             "www.vcn.com",
 			QueryType:         dns.Host,
 			Expected:          &[]string{"209.193.72.54"},
