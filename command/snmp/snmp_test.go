@@ -91,6 +91,87 @@ func TestReturnsResultWithMetricsFromSnmp(t *testing.T) {
 	}
 }
 
+func TestPostProcessValuesAreAppliedToGauges(t *testing.T) {
+	clientMock := new(MockClient)
+	clientMock.On("Connect").Return(nil)
+	clientMock.On("Close").Return(nil)
+	clientMock.On("Get", mock.Anything).Return([]Object{
+		{
+			Type:  Uinteger32,
+			Value: uint32(1234567),
+			Oid:   "1.2.3.4.5.6.7.8",
+		},
+	}, nil)
+
+	cmd := &Command{Client: clientMock, OidMonitors: []OidMonitor{
+		{
+			Oid:              "1.2.3.4.5.6.7.8",
+			Name:             "foo1",
+			PostProcessValue: 0.001,
+		},
+	}}
+	result, _ := cmd.Run(gollector.Check{})
+	want := []gollector.ResultMetric{
+		{
+			Label: "foo1",
+			Value: "1234.567",
+			Type:  gollector.ResultMetricGauge,
+		},
+	}
+	got := result.Metrics
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("invalid metrics returned: wanted %v, got %v", want, got)
+	}
+}
+
+func TestPostProcessValuesAreNotAppliedToCounters(t *testing.T) {
+	clientMock := new(MockClient)
+	clientMock.On("Connect").Return(nil)
+	clientMock.On("Close").Return(nil)
+	clientMock.On("Get", mock.Anything).Return([]Object{
+		{
+			Type:  Counter32,
+			Value: uint32(1234567),
+			Oid:   "1.2.3.4.5.6.7.8",
+		},
+		{
+			Type:  Counter64,
+			Value: uint64(1234567123131),
+			Oid:   "1.2.3.4.5.6.7.9",
+		},
+	}, nil)
+
+	cmd := &Command{Client: clientMock, OidMonitors: []OidMonitor{
+		{
+			Oid:              "1.2.3.4.5.6.7.8",
+			Name:             "foo1",
+			PostProcessValue: 0.001,
+		},
+		{
+			Oid:              "1.2.3.4.5.6.7.9",
+			Name:             "foo2",
+			PostProcessValue: 1.1,
+		},
+	}}
+	result, _ := cmd.Run(gollector.Check{})
+	want := []gollector.ResultMetric{
+		{
+			Label: "foo1",
+			Value: "1234567",
+			Type:  gollector.ResultMetricCounter,
+		},
+		{
+			Label: "foo2",
+			Value: "1234567123131",
+			Type:  gollector.ResultMetricCounter,
+		},
+	}
+	got := result.Metrics
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("invalid metrics returned: wanted %v, got %v", want, got)
+	}
+}
+
 // TODO: test oid monitor thresholds
 
 type MockClient struct {
