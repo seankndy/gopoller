@@ -28,7 +28,7 @@ func (c *GoRrdClient) Connect() error {
 		addr = addr[7:]
 		client, err = rrd.NewClient(addr, rrd.Timeout(c.timeout), rrd.Unix)
 	} else {
-		if addr[:6] == "tcp://" {
+		if addr[:6] == "smtp://" {
 			addr = addr[6:]
 		}
 		client, err = rrd.NewClient(addr, rrd.Timeout(c.timeout))

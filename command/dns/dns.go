@@ -28,8 +28,8 @@ type Command struct {
 
 	Expected *[]string
 
-	WarnRespThreshold time.Duration
-	CritRespThreshold time.Duration
+	WarnRespTimeThreshold time.Duration
+	CritRespTimeThreshold time.Duration
 }
 
 func (c *Command) Run(check gollector.Check) (gollector.Result, error) {
@@ -113,10 +113,10 @@ func (c *Command) Run(check gollector.Check) (gollector.Result, error) {
 	if !expectedMatches {
 		resultState = gollector.StateCrit
 		resultReasonCode = "UNEXPECTED_RESP"
-	} else if respTime > c.CritRespThreshold {
+	} else if respTime > c.CritRespTimeThreshold {
 		resultState = gollector.StateCrit
 		resultReasonCode = "RESP_TIME_EXCEEDED"
-	} else if respTime > c.WarnRespThreshold {
+	} else if respTime > c.WarnRespTimeThreshold {
 		resultState = gollector.StateWarn
 		resultReasonCode = "RESP_TIME_EXCEEDED"
 	} else {
