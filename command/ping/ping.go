@@ -2,54 +2,76 @@ package ping
 
 import (
 	"fmt"
-	probing "github.com/prometheus-community/pro-bing"
 	"github.com/seankndy/gollector"
 	"time"
 )
 
-type Command struct {
-	Ip                      string
-	Count                   int
-	Interval                time.Duration
-	Size                    int
-	PacketLossWarnThreshold float64
-	PacketLossCritThreshold float64
-	AvgRttWarnThreshold     float64
-	AvgRttCritThreshold     float64
+type Pinger interface {
+	Run(*Command) (*PingerStats, error)
 }
 
-func (c Command) Run(check gollector.Check) (gollector.Result, error) {
-	pinger, err := probing.NewPinger(c.Ip)
+type PingerStats struct {
+	// PacketLoss is the percentage of packets lost
+	PacketLoss float64
+
+	// AvgRtt is the average round-trip time
+	AvgRtt time.Duration
+
+	// StdDevRtt is the standard deviation of the round-trip times
+	StdDevRtt time.Duration
+}
+
+type Command struct {
+	pinger Pinger
+
+	Addr     string
+	Count    int
+	Interval time.Duration
+	Size     int
+
+	PacketLossWarnThreshold float64
+	PacketLossCritThreshold float64
+	AvgRttWarnThreshold     time.Duration
+	AvgRttCritThreshold     time.Duration
+}
+
+func (c *Command) SetPinger(pinger Pinger) {
+	c.pinger = pinger
+}
+
+var (
+	DefaultPinger = &ProBingPinger{}
+)
+
+func (c *Command) Run(gollector.Check) (gollector.Result, error) {
+	var pinger Pinger
+	if c.pinger != nil {
+		pinger = c.pinger
+	} else {
+		pinger = DefaultPinger
+	}
+
+	stats, err := pinger.Run(c)
 	if err != nil {
 		return *gollector.MakeUnknownResult("CMD_FAILURE"), err
 	}
 
-	pinger.Interval = c.Interval
-	pinger.Count = c.Count
-	pinger.Size = c.Size
-	err = pinger.Run()
-	if err != nil {
-		return *gollector.MakeUnknownResult("CMD_FAILURE"), err
-	}
-
-	stats := pinger.Statistics()
-
-	avgMs := float64(stats.AvgRtt.Microseconds()) / 1000
-	jitterMs := float64(stats.StdDevRtt.Microseconds()) / 1000
+	avgMs := float64(stats.AvgRtt.Microseconds()) / float64(time.Microsecond)
+	jitterMs := float64(stats.StdDevRtt.Microseconds()) / float64(time.Microsecond)
 	lossPerc := stats.PacketLoss
 
 	var state gollector.ResultState
 	var reasonCode string
-	if lossPerc >= c.PacketLossCritThreshold {
+	if lossPerc > c.PacketLossCritThreshold {
 		state = gollector.StateCrit
 		reasonCode = "PKT_LOSS_HIGH"
-	} else if lossPerc >= c.PacketLossWarnThreshold {
+	} else if lossPerc > c.PacketLossWarnThreshold {
 		state = gollector.StateWarn
 		reasonCode = "PKT_LOSS_HIGH"
-	} else if avgMs >= c.AvgRttCritThreshold {
+	} else if stats.AvgRtt > c.AvgRttCritThreshold {
 		state = gollector.StateCrit
 		reasonCode = "LATENCY_HIGH"
-	} else if avgMs >= c.AvgRttWarnThreshold {
+	} else if stats.AvgRtt > c.AvgRttWarnThreshold {
 		state = gollector.StateWarn
 		reasonCode = "LATENCY_HIGH"
 	} else {

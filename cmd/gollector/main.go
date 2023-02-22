@@ -22,7 +22,7 @@ func main() {
 	server.MaxRunningChecks = 3
 	server.AutoReEnqueue = true
 	server.OnCheckExecuting = func(check gollector.Check) {
-		fmt.Printf("Check beginning execution: %v\n", check)
+		//fmt.Printf("Check beginning execution: %v\n", check)
 	}
 	server.OnCheckErrored = func(check gollector.Check, err error) {
 		fmt.Printf("CHECK ERROR: %v", err)
@@ -40,15 +40,15 @@ func main() {
 		Schedule:          &tenSecondPeriodic,
 		SuppressIncidents: false,
 		Meta:              map[string]string{"check1": "check1"},
-		Command: ping.Command{
-			Ip:                      "209.193.82.100",
+		Command: &ping.Command{
+			Addr:                    "209.193.82.100",
 			Count:                   5,
 			Interval:                100 * time.Millisecond,
 			Size:                    64,
 			PacketLossWarnThreshold: 90,
 			PacketLossCritThreshold: 95,
-			AvgRttWarnThreshold:     1,
-			AvgRttCritThreshold:     50,
+			AvgRttWarnThreshold:     1 * time.Millisecond,
+			AvgRttCritThreshold:     50 * time.Millisecond,
 		},
 		Handlers: []gollector.Handler{
 			dummy2.Handler{},
