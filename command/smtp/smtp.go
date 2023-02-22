@@ -10,7 +10,6 @@ import (
 )
 
 type Command struct {
-	conn                  net.Conn
 	Addr                  string
 	Port                  uint16
 	Timeout               time.Duration
@@ -20,25 +19,25 @@ type Command struct {
 	ExpectedResponseCode  int
 }
 
-func (c *Command) Run(check gollector.Check) (result gollector.Result, err error) {
+func (c *Command) Run(gollector.Check) (result gollector.Result, err error) {
 	dialer := net.Dialer{Timeout: c.Timeout}
-	c.conn, err = dialer.Dial("tcp", fmt.Sprintf("%s:%d", c.Addr, c.Port))
+	conn, err := dialer.Dial("tcp", fmt.Sprintf("%s:%d", c.Addr, c.Port))
 	if err != nil {
 		var netError net.Error
 		if errors.As(err, &netError) && netError.Timeout() {
 			return *gollector.NewResult(gollector.StateCrit, "CONNECTION_TIMEOUT", nil), nil
 		}
 
-		return *gollector.MakeUnknownResult("CMD_FAILURE"), nil
+		return *gollector.MakeUnknownResult("CMD_FAILURE"), err
 	}
 	defer func() {
-		errC := c.conn.Close()
+		errC := conn.Close()
 		if err != nil {
 			err = errC
 		}
 	}()
 
-	text := textproto.NewConn(c.conn)
+	text := textproto.NewConn(conn)
 	_, _, err = text.ReadResponse(220)
 	if err != nil {
 		return *gollector.NewResult(gollector.StateCrit, "SMTP_NOT_READY", nil), nil
@@ -50,6 +49,9 @@ func (c *Command) Run(check gollector.Check) (result gollector.Result, err error
 	text.StartResponse(id)
 	actualResponseCode, _, err := text.ReadResponse(-1)
 	text.EndResponse(id)
+	if err != nil {
+		return *gollector.MakeUnknownResult("CMD_FAILURE"), err
+	}
 
 	respTime := time.Now().Sub(startTime)
 	respMs := float64(respTime.Microseconds()) / float64(time.Microsecond)
@@ -67,9 +69,6 @@ func (c *Command) Run(check gollector.Check) (result gollector.Result, err error
 	if actualResponseCode != c.ExpectedResponseCode {
 		resultState = gollector.StateCrit
 		resultReasonCode = "UNEXPECTED_RESP"
-	} else if err != nil {
-		resultState = gollector.StateUnknown
-		resultReasonCode = "CMD_FAILURE"
 	} else if respTime > c.CritRespTimeThreshold {
 		resultState = gollector.StateCrit
 		resultReasonCode = "RESP_TIME_EXCEEDED"
