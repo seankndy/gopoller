@@ -48,7 +48,7 @@ func (c *Command) Run(check gollector.Check) (result gollector.Result, err error
 
 	id, err := text.Cmd(c.Send)
 	text.StartResponse(id)
-	_, _, err = text.ReadResponse(c.ExpectedResponseCode)
+	actualResponseCode, _, err := text.ReadResponse(-1)
 	text.EndResponse(id)
 
 	respTime := time.Now().Sub(startTime)
@@ -64,9 +64,12 @@ func (c *Command) Run(check gollector.Check) (result gollector.Result, err error
 	var resultState gollector.ResultState
 	var resultReasonCode string
 
-	if err != nil {
+	if actualResponseCode != c.ExpectedResponseCode {
 		resultState = gollector.StateCrit
 		resultReasonCode = "UNEXPECTED_RESP"
+	} else if err != nil {
+		resultState = gollector.StateUnknown
+		resultReasonCode = "CMD_FAILURE"
 	} else if respTime > c.CritRespTimeThreshold {
 		resultState = gollector.StateCrit
 		resultReasonCode = "RESP_TIME_EXCEEDED"

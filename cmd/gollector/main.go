@@ -6,6 +6,7 @@ import (
 	"github.com/seankndy/gollector"
 	"github.com/seankndy/gollector/command/dns"
 	"github.com/seankndy/gollector/command/ping"
+	"github.com/seankndy/gollector/command/smtp"
 	"github.com/seankndy/gollector/command/snmp"
 	dummy2 "github.com/seankndy/gollector/handler/dummy"
 	"github.com/seankndy/gollector/handler/rrdcached"
@@ -75,14 +76,34 @@ func main() {
 		SuppressIncidents: false,
 		Meta:              map[string]string{"check3": "check3"},
 		Command: &dns.Command{
-			ServerIp:          "209.193.72.2",
-			ServerPort:        53,
-			ServerTimeout:     3 * time.Second,
-			Query:             "www.vcn.com",
-			QueryType:         dns.Host,
-			Expected:          &[]string{"209.193.72.54"},
-			WarnRespThreshold: 20 * time.Millisecond,
-			CritRespThreshold: 40 * time.Millisecond,
+			ServerIp:              "209.193.72.2",
+			ServerPort:            53,
+			ServerTimeout:         3 * time.Second,
+			Query:                 "www.vcn.com",
+			QueryType:             dns.Host,
+			Expected:              &[]string{"209.193.72.54"},
+			WarnRespTimeThreshold: 20 * time.Millisecond,
+			CritRespTimeThreshold: 40 * time.Millisecond,
+		},
+		Handlers: []gollector.Handler{
+			dummy2.Handler{},
+		},
+		LastCheck:  nil,
+		LastResult: nil,
+	})
+
+	checkQueue.Enqueue(gollector.Check{
+		Schedule:          &tenSecondPeriodic,
+		SuppressIncidents: false,
+		Meta:              map[string]string{"check4": "check4"},
+		Command: &smtp.Command{
+			Addr:                  "smtp.vcn.com",
+			Port:                  25,
+			Timeout:               5 * time.Second,
+			WarnRespTimeThreshold: 25 * time.Millisecond,
+			CritRespTimeThreshold: 50 * time.Millisecond,
+			Send:                  "HELO gollector.local",
+			ExpectedResponseCode:  250,
 		},
 		Handlers: []gollector.Handler{
 			dummy2.Handler{},
