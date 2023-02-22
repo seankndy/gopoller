@@ -10,13 +10,15 @@ import (
 )
 
 type Command struct {
-	Addr                  string
-	Port                  uint16
-	Timeout               time.Duration
+	Addr    string
+	Port    uint16
+	Timeout time.Duration
+
+	Send                 string // typically a "HELO" or "EHLO" command
+	ExpectedResponseCode int    // typically 250
+
 	WarnRespTimeThreshold time.Duration
 	CritRespTimeThreshold time.Duration
-	Send                  string
-	ExpectedResponseCode  int
 }
 
 func (c *Command) Run(gollector.Check) (result gollector.Result, err error) {
