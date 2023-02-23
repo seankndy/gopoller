@@ -11,9 +11,11 @@ import (
 
 func TestReturnsUnknownResultAndErrorOnSnmpConnectFailure(t *testing.T) {
 	clientMock := new(MockClient)
-	clientMock.On("Connect").Return(errors.New("could not reach host"))
+	clientMock.On("Connect", mock.Anything).Return(errors.New("could not reach host"))
 
-	cmd := &Command{Client: clientMock}
+	cmd := &Command{}
+	cmd.SetClient(clientMock)
+
 	result, err := cmd.Run(gollector.Check{})
 	if result.State != gollector.StateUnknown {
 		t.Errorf("wanted state to be %v, got %v", gollector.StateUnknown, result.State)
@@ -25,13 +27,15 @@ func TestReturnsUnknownResultAndErrorOnSnmpConnectFailure(t *testing.T) {
 
 func TestReturnsUnknownResultAndErrorOnSnmpGetFailure(t *testing.T) {
 	clientMock := new(MockClient)
-	clientMock.On("Connect").Return(nil)
+	clientMock.On("Connect", mock.Anything).Return(nil)
 	clientMock.On("Close").Return(nil)
 	clientMock.On("Get", mock.Anything).Return([]Object{}, errors.New("timeout after 3 retries"))
 
-	cmd := &Command{Client: clientMock, OidMonitors: []OidMonitor{
+	cmd := &Command{OidMonitors: []OidMonitor{
 		*NewOidMonitor("1.2.3.4.5.6.7.8", "foo"),
 	}}
+	cmd.SetClient(clientMock)
+
 	result, err := cmd.Run(gollector.Check{})
 	if result.State != gollector.StateUnknown {
 		t.Errorf("wanted state to be %v, got %v", gollector.StateUnknown, result.State)
@@ -43,7 +47,7 @@ func TestReturnsUnknownResultAndErrorOnSnmpGetFailure(t *testing.T) {
 
 func TestReturnsResultWithMetricsFromSnmp(t *testing.T) {
 	clientMock := new(MockClient)
-	clientMock.On("Connect").Return(nil)
+	clientMock.On("Connect", mock.Anything).Return(nil)
 	clientMock.On("Close").Return(nil)
 	clientMock.On("Get", mock.Anything).Return([]Object{
 		{
@@ -63,11 +67,13 @@ func TestReturnsResultWithMetricsFromSnmp(t *testing.T) {
 		},
 	}, nil)
 
-	cmd := &Command{Client: clientMock, OidMonitors: []OidMonitor{
+	cmd := &Command{OidMonitors: []OidMonitor{
 		*NewOidMonitor("1.2.3.4.5.6.7.8", "foo1"),
 		*NewOidMonitor("1.2.3.4.5.6.7.8.9", "foo2"),
 		*NewOidMonitor("1.2.3.4.5.6.7.8.9.1", "foo3"),
 	}}
+	cmd.SetClient(clientMock)
+
 	result, _ := cmd.Run(gollector.Check{})
 	want := []gollector.ResultMetric{
 		{
@@ -94,7 +100,7 @@ func TestReturnsResultWithMetricsFromSnmp(t *testing.T) {
 
 func TestPostProcessValuesAreAppliedToGauges(t *testing.T) {
 	clientMock := new(MockClient)
-	clientMock.On("Connect").Return(nil)
+	clientMock.On("Connect", mock.Anything).Return(nil)
 	clientMock.On("Close").Return(nil)
 	clientMock.On("Get", mock.Anything).Return([]Object{
 		{
@@ -104,13 +110,14 @@ func TestPostProcessValuesAreAppliedToGauges(t *testing.T) {
 		},
 	}, nil)
 
-	cmd := &Command{Client: clientMock, OidMonitors: []OidMonitor{
+	cmd := &Command{OidMonitors: []OidMonitor{
 		{
 			Oid:              "1.2.3.4.5.6.7.8",
 			Name:             "foo1",
 			PostProcessValue: 0.001,
 		},
 	}}
+	cmd.SetClient(clientMock)
 	result, _ := cmd.Run(gollector.Check{})
 	want := []gollector.ResultMetric{
 		{
@@ -127,7 +134,7 @@ func TestPostProcessValuesAreAppliedToGauges(t *testing.T) {
 
 func TestPostProcessValuesAreNotAppliedToCounters(t *testing.T) {
 	clientMock := new(MockClient)
-	clientMock.On("Connect").Return(nil)
+	clientMock.On("Connect", mock.Anything).Return(nil)
 	clientMock.On("Close").Return(nil)
 	clientMock.On("Get", mock.Anything).Return([]Object{
 		{
@@ -142,7 +149,7 @@ func TestPostProcessValuesAreNotAppliedToCounters(t *testing.T) {
 		},
 	}, nil)
 
-	cmd := &Command{Client: clientMock, OidMonitors: []OidMonitor{
+	cmd := &Command{OidMonitors: []OidMonitor{
 		{
 			Oid:              "1.2.3.4.5.6.7.8",
 			Name:             "foo1",
@@ -154,6 +161,8 @@ func TestPostProcessValuesAreNotAppliedToCounters(t *testing.T) {
 			PostProcessValue: 1.1,
 		},
 	}}
+	cmd.SetClient(clientMock)
+
 	result, _ := cmd.Run(gollector.Check{})
 	want := []gollector.ResultMetric{
 		{
@@ -390,11 +399,13 @@ func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			clientMock := new(MockClient)
-			clientMock.On("Connect").Return(nil)
+			clientMock.On("Connect", mock.Anything).Return(nil)
 			clientMock.On("Close").Return(nil)
 			clientMock.On("Get", mock.Anything).Return(tt.snmpObjects, nil)
 
-			cmd := &Command{Client: clientMock, OidMonitors: tt.oidMonitors}
+			cmd := &Command{OidMonitors: tt.oidMonitors}
+			cmd.SetClient(clientMock)
+
 			result, _ := cmd.Run(tt.check)
 
 			fmt.Println(result)
@@ -421,8 +432,8 @@ type MockClient struct {
 	mock.Mock
 }
 
-func (m *MockClient) Connect() error {
-	args := m.Called()
+func (m *MockClient) Connect(cmd *Command) error {
+	args := m.Called(cmd)
 	return args.Error(0)
 }
 

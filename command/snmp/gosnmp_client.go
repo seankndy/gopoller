@@ -9,40 +9,28 @@ type GoSnmpClient struct {
 	client *gosnmp.GoSNMP
 }
 
-func NewGoSnmpClient(target, community string) *GoSnmpClient {
-	return &GoSnmpClient{&gosnmp.GoSNMP{
-		Target:             target,
-		Port:               161,
+func (c *GoSnmpClient) Connect(cmd *Command) error {
+	var version gosnmp.SnmpVersion
+	switch cmd.Version {
+	case "1":
+		version = gosnmp.Version1
+	case "3":
+		version = gosnmp.Version3
+	default:
+		version = gosnmp.Version2c
+	}
+
+	c.client = &gosnmp.GoSNMP{
+		Target:             cmd.Addr,
+		Port:               cmd.Port,
 		Transport:          "udp",
-		Community:          community,
-		Version:            gosnmp.Version2c,
+		Community:          cmd.Community,
+		Version:            version,
 		Retries:            3,
 		Timeout:            2 * time.Second,
 		ExponentialTimeout: true,
-	}}
-}
+	}
 
-func (c *GoSnmpClient) SetPort(port uint16) {
-	c.client.Port = port
-}
-
-func (c *GoSnmpClient) SetVersion(version gosnmp.SnmpVersion) {
-	c.client.Version = version
-}
-
-func (c *GoSnmpClient) SetTransport(transport string) {
-	c.client.Transport = transport
-}
-
-func (c *GoSnmpClient) SetTimeout(timeout time.Duration) {
-	c.client.Timeout = timeout
-}
-
-func (c *GoSnmpClient) SetRetries(retries int) {
-	c.client.Retries = retries
-}
-
-func (c *GoSnmpClient) Connect() error {
 	return c.client.Connect()
 }
 
