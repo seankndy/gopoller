@@ -47,7 +47,7 @@ func main() {
 			Size:                    64,
 			PacketLossWarnThreshold: 90,
 			PacketLossCritThreshold: 95,
-			AvgRttWarnThreshold:     1 * time.Millisecond,
+			AvgRttWarnThreshold:     20 * time.Millisecond,
 			AvgRttCritThreshold:     50 * time.Millisecond,
 		},
 		Handlers: []gollector.Handler{

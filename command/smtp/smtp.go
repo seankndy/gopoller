@@ -4,12 +4,30 @@ import (
 	"errors"
 	"fmt"
 	"github.com/seankndy/gollector"
-	"net"
-	"net/textproto"
 	"time"
 )
 
+type Client interface {
+	Connect(*Command) error
+	Close() error
+	Cmd(string) (int, time.Duration, error)
+}
+
+type NotReadyErr struct {
+	Cause error
+}
+
+func (e *NotReadyErr) Error() string {
+	return "smtp not ready"
+}
+
+func (e *NotReadyErr) Unwrap() error {
+	return e.Cause
+}
+
 type Command struct {
+	client Client
+
 	Addr    string
 	Port    uint16
 	Timeout time.Duration
@@ -21,41 +39,43 @@ type Command struct {
 	CritRespTimeThreshold time.Duration
 }
 
+func (c *Command) SetClient(client Client) {
+	c.client = client
+}
+
+var (
+	DefaultClient = &TextProtoSmtp{}
+)
+
 func (c *Command) Run(gollector.Check) (result gollector.Result, err error) {
-	dialer := net.Dialer{Timeout: c.Timeout}
-	conn, err := dialer.Dial("tcp", fmt.Sprintf("%s:%d", c.Addr, c.Port))
+	var client Client
+	if c.client != nil {
+		client = c.client
+	} else {
+		client = DefaultClient
+	}
+
+	err = client.Connect(c)
 	if err != nil {
-		var netError net.Error
-		if errors.As(err, &netError) && netError.Timeout() {
-			return *gollector.NewResult(gollector.StateCrit, "CONNECTION_TIMEOUT", nil), nil
+		var notReadyErr *NotReadyErr
+		if errors.As(err, &notReadyErr) {
+			client.Close()
+			return *gollector.NewResult(gollector.StateCrit, "SMTP_NOT_READY", nil), err
 		}
 
-		return *gollector.MakeUnknownResult("CMD_FAILURE"), err
+		return *gollector.NewResult(gollector.StateCrit, "CONNECTION_ERROR", nil), err
 	}
 	defer func() {
-		errC := conn.Close()
+		errC := client.Close()
 		if err != nil {
 			err = errC
 		}
 	}()
 
-	text := textproto.NewConn(conn)
-	_, _, err = text.ReadResponse(220)
-	if err != nil {
-		return *gollector.NewResult(gollector.StateCrit, "SMTP_NOT_READY", nil), nil
-	}
-
-	startTime := time.Now()
-
-	id, err := text.Cmd(c.Send)
-	text.StartResponse(id)
-	actualResponseCode, _, err := text.ReadResponse(-1)
-	text.EndResponse(id)
+	actualResponseCode, respTime, err := client.Cmd(c.Send)
 	if err != nil {
 		return *gollector.MakeUnknownResult("CMD_FAILURE"), err
 	}
-
-	respTime := time.Now().Sub(startTime)
 	respMs := float64(respTime.Microseconds()) / float64(time.Microsecond)
 
 	resultMetrics := []gollector.ResultMetric{
