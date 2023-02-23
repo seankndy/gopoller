@@ -17,7 +17,7 @@ type MemoryCheckQueue struct {
 	total       uint64
 	priorities  map[int64]int64
 	minPriority int64
-	mu          sync.RWMutex
+	sync.RWMutex
 }
 
 func NewMemoryCheckQueue() *MemoryCheckQueue {
@@ -31,8 +31,8 @@ func NewMemoryCheckQueue() *MemoryCheckQueue {
 func (m *MemoryCheckQueue) Enqueue(check Check) {
 	priority := check.DueAt().Unix()
 
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.Lock()
+	defer m.Unlock()
 
 	m.checks[priority] = append(m.checks[priority], check)
 	m.total++
@@ -45,8 +45,8 @@ func (m *MemoryCheckQueue) Enqueue(check Check) {
 }
 
 func (m *MemoryCheckQueue) Dequeue() *Check {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.Lock()
+	defer m.Unlock()
 
 	_, ok := m.checks[m.minPriority]
 	if !ok {
@@ -81,8 +81,8 @@ func (m *MemoryCheckQueue) Dequeue() *Check {
 }
 
 func (m *MemoryCheckQueue) Flush() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.Lock()
+	defer m.Unlock()
 
 	m.checks = make(map[int64][]Check)
 	m.priorities = make(map[int64]int64)
@@ -91,8 +91,8 @@ func (m *MemoryCheckQueue) Flush() {
 }
 
 func (m *MemoryCheckQueue) Count() uint64 {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+	m.RLock()
+	defer m.RUnlock()
 
 	return m.total
 }

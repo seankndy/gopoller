@@ -1,12 +1,14 @@
 package snmp
 
 import (
+	"errors"
 	"github.com/gosnmp/gosnmp"
 	"time"
 )
 
 type GoSnmpClient struct {
-	client *gosnmp.GoSNMP
+	client    *gosnmp.GoSNMP
+	connected bool
 }
 
 func (c *GoSnmpClient) Connect(cmd *Command) error {
@@ -31,14 +33,25 @@ func (c *GoSnmpClient) Connect(cmd *Command) error {
 		ExponentialTimeout: true,
 	}
 
-	return c.client.Connect()
+	err := c.client.Connect()
+	if err == nil {
+		c.connected = true
+	}
+	return err
 }
 
 func (c *GoSnmpClient) Close() error {
-	return c.client.Conn.Close()
+	if c.client != nil {
+		return c.client.Conn.Close()
+	}
+	return nil
 }
 
 func (c *GoSnmpClient) Get(oids []string) ([]Object, error) {
+	if c.client == nil || !c.connected {
+		return nil, errors.New("not connected")
+	}
+
 	numOids := len(oids)
 	objects := make([]Object, 0, numOids)
 
