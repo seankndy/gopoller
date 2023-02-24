@@ -73,5 +73,6 @@ func (c *GoSnmpGetter) connect(host *Host) (*gosnmp.GoSNMP, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return client, nil
 }
