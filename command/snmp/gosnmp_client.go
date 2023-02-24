@@ -52,19 +52,18 @@ func (c *GoSnmpClient) Get(oids []string) ([]Object, error) {
 		return nil, errors.New("not connected")
 	}
 
-	numOids := len(oids)
-	objects := make([]Object, 0, numOids)
+	objects := make([]Object, 0, len(oids))
 
-	// if numOids > c.client.MaxOids, chunk them and make ceil(numOids/c.client.MaxOids) SNMP GET requests
+	// if len(oids) > c.client.MaxOids, chunk them and make ceil(len(oids)/c.client.MaxOids) SNMP GET requests
 	var chunk int
-	if numOids > c.client.MaxOids {
+	if len(oids) > c.client.MaxOids {
 		chunk = c.client.MaxOids
 	} else {
-		chunk = numOids
+		chunk = len(oids)
 	}
-	for offset := 0; offset < numOids; offset += chunk {
-		if chunk > numOids-offset {
-			chunk = numOids - offset
+	for offset := 0; offset < len(oids); offset += chunk {
+		if chunk > len(oids)-offset {
+			chunk = len(oids) - offset
 		}
 
 		packet, err := c.client.Get(oids[offset : offset+chunk])
