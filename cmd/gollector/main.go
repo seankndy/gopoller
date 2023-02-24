@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/seankndy/gollector"
 	"github.com/seankndy/gollector/command/dns"
+	"github.com/seankndy/gollector/command/junsubpool"
 	"github.com/seankndy/gollector/command/ping"
 	"github.com/seankndy/gollector/command/smtp"
 	"github.com/seankndy/gollector/command/snmp"
@@ -105,6 +106,18 @@ func main() {
 			Send:                  "HELO gollector.local",
 			ExpectedResponseCode:  250,
 		},
+		Handlers: []gollector.Handler{
+			dummy2.Handler{},
+		},
+		LastCheck:  nil,
+		LastResult: nil,
+	})
+
+	checkQueue.Enqueue(gollector.Check{
+		Schedule:          &tenSecondPeriodic,
+		SuppressIncidents: false,
+		Meta:              map[string]string{"check5": "check5"},
+		Command:           junsubpool.NewCommand("209.193.82.44", "public", []int{1000002, 1000003, 1000004, 1000005, 1000006, 1000007, 1000008, 1000012, 1000015, 1000017, 1000019}, 95, 99),
 		Handlers: []gollector.Handler{
 			dummy2.Handler{},
 		},
