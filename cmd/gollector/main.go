@@ -20,7 +20,7 @@ import (
 func main() {
 	checkQueue := gollector.NewMemoryCheckQueue()
 	server := gollector.NewServer(context.Background(), checkQueue)
-	server.MaxRunningChecks = 3
+	server.MaxRunningChecks = 2
 	server.AutoReEnqueue = true
 	server.OnCheckExecuting = func(check gollector.Check) {
 		//fmt.Printf("Check beginning execution: %v\n", check)

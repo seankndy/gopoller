@@ -2,6 +2,7 @@ package gollector
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -44,45 +45,47 @@ func (s *Server) Run() {
 	defer close(runningLimiter)
 
 	pendingChecks := make(chan *Check, s.MaxRunningChecks)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() { // populate pendingCheck channel from queue indefinitely
+		defer wg.Done()
 		defer close(pendingChecks)
 
 		// we have this in its own goroutine in case checkQueue.Dequeue() takes some time to return and the main
 		// check loop (below) is blocking by the runningLimiter.  this allows us to continue to fill the pending
 		// checks queue and make the system more responsive
 
-		for loop := true; loop; {
+		for {
 			select {
 			case <-s.ctx.Done():
-				loop = false
-				break
+				return
 			default:
 			}
 
-			if check := s.checkQueue.Dequeue(); check != nil {
-				pendingChecks <- check
-			} else {
+			var check *Check
+			if len(pendingChecks) < cap(pendingChecks) {
+				check = s.checkQueue.Dequeue()
+				if check != nil {
+					pendingChecks <- check
+				}
+			}
+
+			if check == nil {
 				time.Sleep(250 * time.Millisecond)
 			}
 		}
 	}()
 
-	var wg sync.WaitGroup
-	for loop := true; loop; {
+loop:
+	for check := range pendingChecks {
 		select {
 		case <-s.ctx.Done():
-			loop = false
-			break
-		case check, ok := <-pendingChecks:
-			if !ok { // pendingChecks closed, stop loop
-				loop = false
-				break
-			}
-
-			runningLimiter <- struct{}{}
-
+			s.checkQueue.Enqueue(*check) // put the check back, we're shutting down
+			break loop
+		case runningLimiter <- struct{}{}:
 			wg.Add(1)
-			go func() {
+			go func(check *Check) {
 				defer wg.Done()
 				defer func() {
 					if s.AutoReEnqueue {
@@ -106,14 +109,16 @@ func (s *Server) Run() {
 				if onCheckFinished != nil {
 					onCheckFinished(*check, time.Now().Sub(startTime))
 				}
-			}()
+			}(check)
 		}
 	}
+
 	wg.Wait()
 
 	if s.AutoReEnqueue {
 		// put any pending checks back into the queue prior to shut down
 		for check := range pendingChecks {
+			fmt.Println("yay")
 			s.checkQueue.Enqueue(*check)
 		}
 	}
