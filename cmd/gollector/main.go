@@ -37,6 +37,7 @@ func main() {
 
 	tenSecondPeriodic := gollector.PeriodicSchedule{IntervalSeconds: 10}
 
+	lastCheck1 := time.Now().Add(-100 * time.Second)
 	checkQueue.Enqueue(gollector.Check{
 		Schedule:          &tenSecondPeriodic,
 		SuppressIncidents: false,
@@ -54,10 +55,11 @@ func main() {
 		Handlers: []gollector.Handler{
 			dummy2.Handler{},
 		},
-		LastCheck:  nil,
+		LastCheck:  &lastCheck1,
 		LastResult: nil,
 	})
 
+	lastCheck2 := time.Now().Add(-90 * time.Second)
 	checkQueue.Enqueue(gollector.Check{
 		Schedule:          &tenSecondPeriodic,
 		SuppressIncidents: false,
@@ -68,7 +70,7 @@ func main() {
 		Handlers: []gollector.Handler{
 			dummy2.Handler{},
 		},
-		LastCheck:  nil,
+		LastCheck:  &lastCheck2,
 		LastResult: nil,
 	})
 
@@ -127,6 +129,9 @@ func main() {
 
 	server.Run()
 
+	// flush the queue prior to shut down
+	checkQueue.Flush()
+
 	fmt.Println("Exiting.")
 }
 
@@ -144,10 +149,9 @@ func handleSignals(server *gollector.Server, checkQueue gollector.CheckQueue) {
 			select {
 			case sig := <-sigCh:
 				if sig == syscall.SIGINT {
-					fmt.Println("Stopping...")
+					fmt.Println("Stopping Server...")
 					server.Stop()
-					// now flush the queue prior to shut down
-					checkQueue.Flush()
+
 					return
 				}
 			}

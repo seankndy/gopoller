@@ -73,7 +73,12 @@ func (s *Server) Run() {
 		case <-s.ctx.Done():
 			loop = false
 			break
-		case check := <-pendingChecks:
+		case check, ok := <-pendingChecks:
+			if !ok { // pendingChecks closed, stop loop
+				loop = false
+				break
+			}
+
 			runningLimiter <- struct{}{}
 
 			wg.Add(1)
