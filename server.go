@@ -2,7 +2,6 @@ package gollector
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 )
@@ -115,12 +114,9 @@ loop:
 
 	wg.Wait()
 
-	if s.AutoReEnqueue {
-		// put any pending checks back into the queue prior to shut down
-		for check := range pendingChecks {
-			fmt.Println("yay")
-			s.checkQueue.Enqueue(*check)
-		}
+	// put any pending checks back into the queue prior to shut down as they never ran
+	for check := range pendingChecks {
+		s.checkQueue.Enqueue(*check)
 	}
 }
 
