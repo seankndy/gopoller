@@ -44,10 +44,6 @@ func (o *OidMonitor) determineResultStateAndReasonFromResultValue(value *big.Int
 	return gollector.StateOk, ""
 }
 
-var (
-	DefaultGetter = &snmp.GoSnmpGetter{}
-)
-
 type Command struct {
 	getter snmp.Getter
 
@@ -69,7 +65,7 @@ func NewCommand(addr, community string, monitors []OidMonitor) *Command {
 func (c *Command) Run(check gollector.Check) (result gollector.Result, err error) {
 	var getter snmp.Getter
 	if c.getter == nil {
-		getter = DefaultGetter
+		getter = snmp.DefaultGetter
 	} else {
 		getter = c.getter
 	}

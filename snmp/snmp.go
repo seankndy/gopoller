@@ -4,6 +4,10 @@ import (
 	"math/big"
 )
 
+var (
+	DefaultGetter = &GoSnmpGetter{}
+)
+
 type Host struct {
 	Addr      string
 	Port      uint16

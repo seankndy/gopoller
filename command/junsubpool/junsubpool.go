@@ -8,10 +8,6 @@ import (
 	"strings"
 )
 
-var (
-	DefaultGetter = &snmp.GoSnmpGetter{}
-)
-
 const (
 	OidPoolAddrTotal  = ".1.3.6.1.4.1.2636.3.51.1.1.4.1.1.1.10"
 	OidPoolAddrsInUse = ".1.3.6.1.4.1.2636.3.51.1.1.4.1.1.1.11"
@@ -42,7 +38,7 @@ func (c *Command) SetGetter(getter snmp.Getter) {
 func (c *Command) Run(gollector.Check) (gollector.Result, error) {
 	var getter snmp.Getter
 	if c.getter == nil {
-		getter = DefaultGetter
+		getter = snmp.DefaultGetter
 	} else {
 		getter = c.getter
 	}
