@@ -2,66 +2,42 @@ package snmp
 
 import (
 	"errors"
-	"fmt"
 	"github.com/seankndy/gollector"
+	"github.com/seankndy/gollector/snmp"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"reflect"
 	"testing"
 )
 
-func TestReturnsUnknownResultAndErrorOnSnmpConnectFailure(t *testing.T) {
-	clientMock := new(MockClient)
-	clientMock.On("Connect", mock.Anything).Return(errors.New("could not reach host"))
-
-	cmd := &Command{}
-	cmd.SetClient(clientMock)
-
-	result, err := cmd.Run(gollector.Check{})
-	if result.State != gollector.StateUnknown {
-		t.Errorf("wanted state to be %v, got %v", gollector.StateUnknown, result.State)
-	}
-	if err == nil {
-		t.Errorf("expected error, got nil")
-	}
-}
-
 func TestReturnsUnknownResultAndErrorOnSnmpGetFailure(t *testing.T) {
-	clientMock := new(MockClient)
-	clientMock.On("Connect", mock.Anything).Return(nil)
-	clientMock.On("Close").Return(nil)
-	clientMock.On("Get", mock.Anything).Return([]Object{}, errors.New("timeout after 3 retries"))
+	getterMock := new(MockGetter)
+	getterMock.On("Get", mock.Anything).Return([]snmp.Object{}, errors.New("timeout after 3 retries"))
 
 	cmd := &Command{OidMonitors: []OidMonitor{
 		*NewOidMonitor("1.2.3.4.5.6.7.8", "foo"),
 	}}
-	cmd.SetClient(clientMock)
-
+	cmd.SetGetter(getterMock)
 	result, err := cmd.Run(gollector.Check{})
-	if result.State != gollector.StateUnknown {
-		t.Errorf("wanted state to be %v, got %v", gollector.StateUnknown, result.State)
-	}
-	if err == nil {
-		t.Errorf("expected error, got nil")
-	}
+
+	assert.Equal(t, gollector.StateUnknown, result.State, "invalid result state")
+	assert.NotNil(t, err)
 }
 
 func TestReturnsResultWithMetricsFromSnmp(t *testing.T) {
-	clientMock := new(MockClient)
-	clientMock.On("Connect", mock.Anything).Return(nil)
-	clientMock.On("Close").Return(nil)
-	clientMock.On("Get", mock.Anything).Return([]Object{
+	getterMock := new(MockGetter)
+	getterMock.On("Get", mock.Anything).Return([]snmp.Object{
 		{
-			Type:  Uinteger32,
+			Type:  snmp.Uinteger32,
 			Value: uint32(1234567),
 			Oid:   "1.2.3.4.5.6.7.8",
 		},
 		{
-			Type:  Uinteger32,
+			Type:  snmp.Uinteger32,
 			Value: uint32(7654321),
 			Oid:   "1.2.3.4.5.6.7.8.9",
 		},
 		{
-			Type:  Counter64,
+			Type:  snmp.Counter64,
 			Value: uint64(18237189237498),
 			Oid:   "1.2.3.4.5.6.7.8.9.1",
 		},
@@ -72,10 +48,10 @@ func TestReturnsResultWithMetricsFromSnmp(t *testing.T) {
 		*NewOidMonitor("1.2.3.4.5.6.7.8.9", "foo2"),
 		*NewOidMonitor("1.2.3.4.5.6.7.8.9.1", "foo3"),
 	}}
-	cmd.SetClient(clientMock)
-
+	cmd.SetGetter(getterMock)
 	result, _ := cmd.Run(gollector.Check{})
-	want := []gollector.ResultMetric{
+
+	assert.Equal(t, []gollector.ResultMetric{
 		{
 			Label: "foo1",
 			Value: "1234567",
@@ -91,20 +67,14 @@ func TestReturnsResultWithMetricsFromSnmp(t *testing.T) {
 			Value: "18237189237498",
 			Type:  gollector.ResultMetricCounter,
 		},
-	}
-	got := result.Metrics
-	if !reflect.DeepEqual(want, got) {
-		t.Errorf("invalid metrics returned: wanted %v, got %v", want, got)
-	}
+	}, result.Metrics)
 }
 
 func TestPostProcessValuesAreAppliedToGauges(t *testing.T) {
-	clientMock := new(MockClient)
-	clientMock.On("Connect", mock.Anything).Return(nil)
-	clientMock.On("Close").Return(nil)
-	clientMock.On("Get", mock.Anything).Return([]Object{
+	getterMock := new(MockGetter)
+	getterMock.On("Get", mock.Anything).Return([]snmp.Object{
 		{
-			Type:  Uinteger32,
+			Type:  snmp.Uinteger32,
 			Value: uint32(1234567),
 			Oid:   "1.2.3.4.5.6.7.8",
 		},
@@ -117,33 +87,27 @@ func TestPostProcessValuesAreAppliedToGauges(t *testing.T) {
 			PostProcessValue: 0.001,
 		},
 	}}
-	cmd.SetClient(clientMock)
+	cmd.SetGetter(getterMock)
 	result, _ := cmd.Run(gollector.Check{})
-	want := []gollector.ResultMetric{
+	assert.Equal(t, []gollector.ResultMetric{
 		{
 			Label: "foo1",
 			Value: "1234.567",
 			Type:  gollector.ResultMetricGauge,
 		},
-	}
-	got := result.Metrics
-	if !reflect.DeepEqual(want, got) {
-		t.Errorf("invalid metrics returned: wanted %v, got %v", want, got)
-	}
+	}, result.Metrics)
 }
 
 func TestPostProcessValuesAreNotAppliedToCounters(t *testing.T) {
-	clientMock := new(MockClient)
-	clientMock.On("Connect", mock.Anything).Return(nil)
-	clientMock.On("Close").Return(nil)
-	clientMock.On("Get", mock.Anything).Return([]Object{
+	getterMock := new(MockGetter)
+	getterMock.On("Get", mock.Anything).Return([]snmp.Object{
 		{
-			Type:  Counter32,
+			Type:  snmp.Counter32,
 			Value: uint32(1234567),
 			Oid:   "1.2.3.4.5.6.7.8",
 		},
 		{
-			Type:  Counter64,
+			Type:  snmp.Counter64,
 			Value: uint64(1234567123131),
 			Oid:   "1.2.3.4.5.6.7.9",
 		},
@@ -161,10 +125,10 @@ func TestPostProcessValuesAreNotAppliedToCounters(t *testing.T) {
 			PostProcessValue: 1.1,
 		},
 	}}
-	cmd.SetClient(clientMock)
-
+	cmd.SetGetter(getterMock)
 	result, _ := cmd.Run(gollector.Check{})
-	want := []gollector.ResultMetric{
+
+	assert.Equal(t, []gollector.ResultMetric{
 		{
 			Label: "foo1",
 			Value: "1234567",
@@ -175,18 +139,14 @@ func TestPostProcessValuesAreNotAppliedToCounters(t *testing.T) {
 			Value: "1234567123131",
 			Type:  gollector.ResultMetricCounter,
 		},
-	}
-	got := result.Metrics
-	if !reflect.DeepEqual(want, got) {
-		t.Errorf("invalid metrics returned: wanted %v, got %v", want, got)
-	}
+	}, result.Metrics)
 }
 
 func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 	tests := []struct {
 		name            string
 		check           gollector.Check
-		snmpObjects     []Object
+		snmpObjects     []snmp.Object
 		oidMonitors     []OidMonitor
 		wantResultState gollector.ResultState
 		wantReasonCode  string
@@ -194,9 +154,9 @@ func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 		{
 			name:  "warn_min",
 			check: gollector.Check{},
-			snmpObjects: []Object{
+			snmpObjects: []snmp.Object{
 				{
-					Type:  Uinteger32,
+					Type:  snmp.Uinteger32,
 					Value: uint32(1234566),
 					Oid:   "1.2.3.4.5.6.7.8",
 				},
@@ -216,9 +176,9 @@ func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 		{
 			name:  "warn_max",
 			check: gollector.Check{},
-			snmpObjects: []Object{
+			snmpObjects: []snmp.Object{
 				{
-					Type:  Uinteger32,
+					Type:  snmp.Uinteger32,
 					Value: uint32(1234568),
 					Oid:   "1.2.3.4.5.6.7.8",
 				},
@@ -238,9 +198,9 @@ func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 		{
 			name:  "crit_min",
 			check: gollector.Check{},
-			snmpObjects: []Object{
+			snmpObjects: []snmp.Object{
 				{
-					Type:  Uinteger32,
+					Type:  snmp.Uinteger32,
 					Value: uint32(1234566),
 					Oid:   "1.2.3.4.5.6.7.8",
 				},
@@ -260,9 +220,9 @@ func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 		{
 			name:  "crit_max",
 			check: gollector.Check{},
-			snmpObjects: []Object{
+			snmpObjects: []snmp.Object{
 				{
-					Type:  Uinteger32,
+					Type:  snmp.Uinteger32,
 					Value: uint32(1234568),
 					Oid:   "1.2.3.4.5.6.7.8",
 				},
@@ -282,9 +242,9 @@ func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 		{
 			name:  "ok",
 			check: gollector.Check{},
-			snmpObjects: []Object{
+			snmpObjects: []snmp.Object{
 				{
-					Type:  Uinteger32,
+					Type:  snmp.Uinteger32,
 					Value: uint32(500),
 					Oid:   "1.2.3.4.5.6.7.8",
 				},
@@ -316,9 +276,9 @@ func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 					Type:  gollector.ResultMetricCounter,
 				},
 			})},
-			snmpObjects: []Object{
+			snmpObjects: []snmp.Object{
 				{
-					Type:  Counter32,
+					Type:  snmp.Counter32,
 					Value: uint32(4999), // previous 4294962295, current 4999, delta 9999
 					Oid:   "1.2.3.4.5.6.7.8",
 				},
@@ -345,9 +305,9 @@ func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 					Type:  gollector.ResultMetricCounter,
 				},
 			})},
-			snmpObjects: []Object{
+			snmpObjects: []snmp.Object{
 				{
-					Type:  Counter64,
+					Type:  snmp.Counter64,
 					Value: uint32(1099), // previous 18446744073709551515, current 1099, delta 1199
 					Oid:   "1.2.3.4.5.6.7.8",
 				},
@@ -374,9 +334,9 @@ func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 					Type:  gollector.ResultMetricCounter,
 				},
 			})},
-			snmpObjects: []Object{
+			snmpObjects: []snmp.Object{
 				{
-					Type:  Counter64,
+					Type:  snmp.Counter64,
 					Value: uint32(1099), // previous 18446744073709551515, current 1099, delta 1199
 					Oid:   "1.2.3.4.5.6.7.8",
 				},
@@ -398,51 +358,24 @@ func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			clientMock := new(MockClient)
-			clientMock.On("Connect", mock.Anything).Return(nil)
-			clientMock.On("Close").Return(nil)
-			clientMock.On("Get", mock.Anything).Return(tt.snmpObjects, nil)
+			getterMock := new(MockGetter)
+			getterMock.On("Get", mock.Anything).Return(tt.snmpObjects, nil)
 
 			cmd := &Command{OidMonitors: tt.oidMonitors}
-			cmd.SetClient(clientMock)
-
+			cmd.SetGetter(getterMock)
 			result, _ := cmd.Run(tt.check)
 
-			fmt.Println(result)
-
-			{
-				want := tt.wantResultState
-				got := result.State
-				if want != got {
-					t.Errorf("wanted result state %v, got %v", want, got)
-				}
-			}
-			{
-				want := tt.wantReasonCode
-				got := result.ReasonCode
-				if want != got {
-					t.Errorf("wanted reason code %v, got %v", want, got)
-				}
-			}
+			assert.Equal(t, tt.wantResultState, result.State, "invalid result state")
+			assert.Equal(t, tt.wantReasonCode, result.ReasonCode, "invalid result reason code")
 		})
 	}
 }
 
-type MockClient struct {
+type MockGetter struct {
 	mock.Mock
 }
 
-func (m *MockClient) Connect(cmd *Command) error {
-	args := m.Called(cmd)
-	return args.Error(0)
-}
-
-func (m *MockClient) Close() error {
-	args := m.Called()
-	return args.Error(0)
-}
-
-func (m *MockClient) Get(oids []string) ([]Object, error) {
+func (m *MockGetter) Get(host *snmp.Host, oids []string) ([]snmp.Object, error) {
 	args := m.Called(oids)
-	return args.Get(0).([]Object), args.Error(1)
+	return args.Get(0).([]snmp.Object), args.Error(1)
 }
