@@ -1,5 +1,5 @@
-# gollector
-gollector is a network monitoring framework written in Go.  It provides the base set of functionality for you to easily create your own Go-based host/network checks (icmp, snmp, etc) and then mutate and process the result data into whatever format and system you'd like. 
+# gopoller
+gopoller is a network monitoring framework written in Go.  It provides the base set of functionality for you to easily create your own Go-based host/network checks (icmp, snmp, etc) and then mutate and process the result data into whatever format and system you'd like. 
 ## Basic Usage
 Here is a basic example showcasing how to bootstrap the system and start running checks.
 
@@ -8,37 +8,37 @@ package main
 
 import (
 	"fmt"
-	"github.com/seankndy/gollector"
-	"github.com/seankndy/gollector/command/ping"
-	"github.com/seankndy/gollector/handler/dummy"
+	"github.com/seankndy/gopoller"
+	"github.com/seankndy/gopoller/command/ping"
+	"github.com/seankndy/gopoller/handler/dummy"
 )
 
 func main() {
 	// this is where you will store all the checks you want to periodically execute
 	// you could write your own check queue as well (just implement the CheckQueue interface)
-	checkQueue := gollector.NewMemoryCheckQueue()
+	checkQueue := gopoller.NewMemoryCheckQueue()
 	// creates the server
-	server := gollector.NewServer(checkQueue)
+	server := gopoller.NewServer(checkQueue)
 	// here we set the max running checks to 2, you probably want something much higher
 	server.MaxRunningChecks = 2
 	// here we tell the server to auto-reenqueue the check after its done executing
 	// alternatively you could set this to false and then use your own system for populating checkQueue
 	server.AutoReEnqueue = true
 	// here we have a couple callbacks to do some rudimentary logging when check start and finish
-	server.OnCheckExecuting = func(check gollector.Check) {
+	server.OnCheckExecuting = func(check gopoller.Check) {
 		fmt.Printf("Check beginning execution: %v\n", check)
 	}
-	server.OnCheckFinished = func(check gollector.Check, runDuration time.Duration) {
+	server.OnCheckFinished = func(check gopoller.Check, runDuration time.Duration) {
 		fmt.Printf("Check finished execution: %v (%.3f seconds)\n", check, runDuration.Seconds())
 	}
 
 	// this is a periodic schedule that i will reuse for every check i put into the queue
 	// in the real-world, your checks will probably have varying intervals
-	tenSecondPeriodic := gollector.PeriodicSchedule{IntervalSeconds: 10}
+	tenSecondPeriodic := gopoller.PeriodicSchedule{IntervalSeconds: 10}
 
 	// queue up a ping couple checks.  these checks would normally come from your own database
 	// and be populated programmatically
-	checkQueue.Enqueue(gollector.Check{
+	checkQueue.Enqueue(gopoller.Check{
 		Schedule:          &tenSecondPeriodic,
 		// if false, the system will never create incidents for this check
 		SuppressIncidents: false,
@@ -56,14 +56,14 @@ func main() {
 			AvgRttCritThreshold:     50,
 		},
 		// these are the handlers that will be called once the check finishes
-		Handlers: []gollector.Handler{
+		Handlers: []gopoller.Handler{
 			handler.DummyHandler{},
 		},
 		LastCheck:  nil,
 		LastResult: nil,
 	})
 
-	checkQueue.Enqueue(gollector.Check{
+	checkQueue.Enqueue(gopoller.Check{
 		Schedule:          &tenSecondPeriodic,
 		SuppressIncidents: false,
 		Meta:              nil,
@@ -77,7 +77,7 @@ func main() {
 			AvgRttWarnThreshold:     20,
 			AvgRttCritThreshold:     50,
 		},
-		Handlers: []gollector.Handler{
+		Handlers: []gopoller.Handler{
 			dummy.Handler{},
 		},
 		LastCheck:  nil,

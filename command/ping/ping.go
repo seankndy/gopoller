@@ -2,7 +2,7 @@ package ping
 
 import (
 	"fmt"
-	"github.com/seankndy/gollector"
+	"github.com/seankndy/gopoller"
 	"time"
 )
 
@@ -43,7 +43,7 @@ var (
 	DefaultPinger = &ProBingPinger{}
 )
 
-func (c *Command) Run(gollector.Check) (gollector.Result, error) {
+func (c *Command) Run(gopoller.Check) (gopoller.Result, error) {
 	var pinger Pinger
 	if c.pinger != nil {
 		pinger = c.pinger
@@ -53,32 +53,32 @@ func (c *Command) Run(gollector.Check) (gollector.Result, error) {
 
 	stats, err := pinger.Run(c)
 	if err != nil {
-		return *gollector.MakeUnknownResult("CMD_FAILURE"), err
+		return *gopoller.MakeUnknownResult("CMD_FAILURE"), err
 	}
 
 	avgMs := float64(stats.AvgRtt.Microseconds()) / float64(time.Microsecond)
 	jitterMs := float64(stats.StdDevRtt.Microseconds()) / float64(time.Microsecond)
 	lossPerc := stats.PacketLoss
 
-	var state gollector.ResultState
+	var state gopoller.ResultState
 	var reasonCode string
 	if lossPerc > c.PacketLossCritThreshold {
-		state = gollector.StateCrit
+		state = gopoller.StateCrit
 		reasonCode = "PKT_LOSS_HIGH"
 	} else if lossPerc > c.PacketLossWarnThreshold {
-		state = gollector.StateWarn
+		state = gopoller.StateWarn
 		reasonCode = "PKT_LOSS_HIGH"
 	} else if stats.AvgRtt > c.AvgRttCritThreshold {
-		state = gollector.StateCrit
+		state = gopoller.StateCrit
 		reasonCode = "LATENCY_HIGH"
 	} else if stats.AvgRtt > c.AvgRttWarnThreshold {
-		state = gollector.StateWarn
+		state = gopoller.StateWarn
 		reasonCode = "LATENCY_HIGH"
 	} else {
-		state = gollector.StateOk
+		state = gopoller.StateOk
 	}
 
-	return *gollector.NewResult(state, reasonCode, []gollector.ResultMetric{
+	return *gopoller.NewResult(state, reasonCode, []gopoller.ResultMetric{
 		{Label: "avg", Value: fmt.Sprintf("%.2f", avgMs)},
 		{Label: "jitter", Value: fmt.Sprintf("%.2f", jitterMs)},
 		{Label: "loss", Value: fmt.Sprintf("%.2f", lossPerc)},

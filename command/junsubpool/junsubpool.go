@@ -3,8 +3,8 @@ package junsubpool
 
 import (
 	"fmt"
-	"github.com/seankndy/gollector"
-	"github.com/seankndy/gollector/snmp"
+	"github.com/seankndy/gopoller"
+	"github.com/seankndy/gopoller/snmp"
 	"strings"
 )
 
@@ -35,7 +35,7 @@ func (c *Command) SetGetter(getter snmp.Getter) {
 	c.getter = getter
 }
 
-func (c *Command) Run(gollector.Check) (gollector.Result, error) {
+func (c *Command) Run(gopoller.Check) (gopoller.Result, error) {
 	var getter snmp.Getter
 	if c.getter == nil {
 		getter = snmp.DefaultGetter
@@ -45,7 +45,7 @@ func (c *Command) Run(gollector.Check) (gollector.Result, error) {
 
 	objects, err := getter.Get(&c.Host, c.getOids())
 	if err != nil {
-		return *gollector.MakeUnknownResult("CMD_FAILURE"), err
+		return *gopoller.MakeUnknownResult("CMD_FAILURE"), err
 	}
 
 	var total, used uint64
@@ -69,26 +69,26 @@ func (c *Command) Run(gollector.Check) (gollector.Result, error) {
 
 	percentUsed := float64(used) / float64(total) * 100.0
 
-	var resultState gollector.ResultState
+	var resultState gopoller.ResultState
 	var resultReasonCode string
-	resultMetrics := []gollector.ResultMetric{
+	resultMetrics := []gopoller.ResultMetric{
 		{
 			Label: "total_pool_usage",
 			Value: fmt.Sprintf("%d", used),
-			Type:  gollector.ResultMetricGauge,
+			Type:  gopoller.ResultMetricGauge,
 		},
 	}
 	if percentUsed > c.PercentUtilizationCritThreshold {
-		resultState = gollector.StateCrit
+		resultState = gopoller.StateCrit
 		resultReasonCode = "IP_POOL_USAGE_HIGH"
 	} else if percentUsed > c.PercentUtilizationWarnThreshold {
-		resultState = gollector.StateWarn
+		resultState = gopoller.StateWarn
 		resultReasonCode = "IP_POOL_USAGE_HIGH"
 	} else {
-		resultState = gollector.StateOk
+		resultState = gopoller.StateOk
 	}
 
-	return *gollector.NewResult(resultState, resultReasonCode, resultMetrics), nil
+	return *gopoller.NewResult(resultState, resultReasonCode, resultMetrics), nil
 }
 
 func (c *Command) getOids() []string {

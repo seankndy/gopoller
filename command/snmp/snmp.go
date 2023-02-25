@@ -3,8 +3,8 @@ package snmp
 import (
 	"fmt"
 	"github.com/gosnmp/gosnmp"
-	"github.com/seankndy/gollector"
-	"github.com/seankndy/gollector/snmp"
+	"github.com/seankndy/gopoller"
+	"github.com/seankndy/gopoller/snmp"
 	"math/big"
 )
 
@@ -30,18 +30,18 @@ func NewOidMonitor(oid, name string) *OidMonitor {
 	}
 }
 
-func (o *OidMonitor) determineResultStateAndReasonFromResultValue(value *big.Int) (gollector.ResultState, string) {
+func (o *OidMonitor) determineResultStateAndReasonFromResultValue(value *big.Int) (gopoller.ResultState, string) {
 	if o.CritMinReasonCode != "" && value.Cmp(big.NewInt(o.CritMinThreshold)) < 0 {
-		return gollector.StateCrit, o.CritMinReasonCode
+		return gopoller.StateCrit, o.CritMinReasonCode
 	} else if o.WarnMinReasonCode != "" && value.Cmp(big.NewInt(o.WarnMinThreshold)) < 0 {
-		return gollector.StateWarn, o.WarnMinReasonCode
+		return gopoller.StateWarn, o.WarnMinReasonCode
 	} else if o.CritMaxReasonCode != "" && value.Cmp(big.NewInt(o.CritMaxThreshold)) > 0 {
-		return gollector.StateCrit, o.CritMaxReasonCode
+		return gopoller.StateCrit, o.CritMaxReasonCode
 	} else if o.WarnMaxReasonCode != "" && value.Cmp(big.NewInt(o.WarnMaxThreshold)) > 0 {
-		return gollector.StateWarn, o.WarnMaxReasonCode
+		return gopoller.StateWarn, o.WarnMaxReasonCode
 	}
 
-	return gollector.StateOk, ""
+	return gopoller.StateOk, ""
 }
 
 type Command struct {
@@ -62,7 +62,7 @@ func NewCommand(addr, community string, monitors []OidMonitor) *Command {
 	}
 }
 
-func (c *Command) Run(check gollector.Check) (result gollector.Result, err error) {
+func (c *Command) Run(check gopoller.Check) (result gopoller.Result, err error) {
 	var getter snmp.Getter
 	if c.getter == nil {
 		getter = snmp.DefaultGetter
@@ -81,11 +81,11 @@ func (c *Command) Run(check gollector.Check) (result gollector.Result, err error
 
 	objects, err := getter.Get(&c.Host, rawOids)
 	if err != nil {
-		return *gollector.MakeUnknownResult("CMD_FAILURE"), err
+		return *gopoller.MakeUnknownResult("CMD_FAILURE"), err
 	}
 
-	var resultMetrics []gollector.ResultMetric
-	resultState := gollector.StateUnknown
+	var resultMetrics []gopoller.ResultMetric
+	resultState := gopoller.StateUnknown
 	var resultReason string
 
 	for _, object := range objects {
@@ -96,14 +96,14 @@ func (c *Command) Run(check gollector.Check) (result gollector.Result, err error
 			}
 		}
 		if oidMonitor == nil {
-			return *gollector.MakeUnknownResult("CMD_FAILURE"),
+			return *gopoller.MakeUnknownResult("CMD_FAILURE"),
 				fmt.Errorf("snmp.Command.Run(): oid %s could not be found in monitors", object.Oid)
 		}
 
 		value := gosnmp.ToBigInt(object.Value)
 
 		var resultMetricValue string
-		var resultMetricType gollector.ResultMetricType
+		var resultMetricType gopoller.ResultMetricType
 
 		// for counter types, we compare the difference between the last result and this current result to the
 		// monitor's thresholds, and also we do not apply PostProcessValue to the result
@@ -111,11 +111,11 @@ func (c *Command) Run(check gollector.Check) (result gollector.Result, err error
 		// to the value
 
 		if object.Type == snmp.Counter64 || object.Type == snmp.Counter32 {
-			resultMetricType = gollector.ResultMetricCounter
+			resultMetricType = gopoller.ResultMetricCounter
 			resultMetricValue = value.Text(10)
 
 			// if state is still Unknown, check if this snmp object exceeds any thresholds
-			if resultState == gollector.StateUnknown {
+			if resultState == gopoller.StateUnknown {
 				// get last metric to calculate difference
 				lastMetric := getChecksLastResultMetricByLabel(&check, oidMonitor.Name)
 				var lastValue *big.Int
@@ -140,10 +140,10 @@ func (c *Command) Run(check gollector.Check) (result gollector.Result, err error
 				resultState, resultReason = oidMonitor.determineResultStateAndReasonFromResultValue(diff)
 			}
 		} else {
-			resultMetricType = gollector.ResultMetricGauge
+			resultMetricType = gopoller.ResultMetricGauge
 
 			// if state is still Unknown, check if this snmp object exceeds any thresholds
-			if resultState == gollector.StateUnknown {
+			if resultState == gopoller.StateUnknown {
 				resultState, resultReason = oidMonitor.determineResultStateAndReasonFromResultValue(value)
 			}
 
@@ -152,7 +152,7 @@ func (c *Command) Run(check gollector.Check) (result gollector.Result, err error
 			resultMetricValue = valueF.Mul(valueF, big.NewFloat(oidMonitor.PostProcessValue)).Text('f', -1)
 		}
 
-		resultMetrics = append(resultMetrics, gollector.ResultMetric{
+		resultMetrics = append(resultMetrics, gopoller.ResultMetric{
 			Label: oidMonitor.Name,
 			Value: resultMetricValue,
 			Type:  resultMetricType,
@@ -160,10 +160,10 @@ func (c *Command) Run(check gollector.Check) (result gollector.Result, err error
 
 	}
 
-	return *gollector.NewResult(resultState, resultReason, resultMetrics), nil
+	return *gopoller.NewResult(resultState, resultReason, resultMetrics), nil
 }
 
-func getChecksLastResultMetricByLabel(check *gollector.Check, label string) *gollector.ResultMetric {
+func getChecksLastResultMetricByLabel(check *gopoller.Check, label string) *gopoller.ResultMetric {
 	if check.LastResult != nil {
 		for k, _ := range check.LastResult.Metrics {
 			if check.LastResult.Metrics[k].Label == label {

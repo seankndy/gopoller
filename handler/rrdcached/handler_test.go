@@ -2,7 +2,7 @@ package rrdcached
 
 import (
 	"fmt"
-	"github.com/seankndy/gollector"
+	"github.com/seankndy/gopoller"
 	"reflect"
 	"testing"
 	"time"
@@ -14,8 +14,8 @@ func TestDoesNotConnectToRrdCacheDWhenGetRrdFileDefsNil(t *testing.T) {
 	mockRrdClient := MockRrdClient{}
 	h := NewHandler(&mockRrdClient, nil)
 
-	check := gollector.Check{}
-	result := *gollector.NewResult(gollector.StateOk, "", nil)
+	check := gopoller.Check{}
+	result := *gopoller.NewResult(gopoller.StateOk, "", nil)
 
 	h.Process(check, result, nil)
 
@@ -26,12 +26,12 @@ func TestDoesNotConnectToRrdCacheDWhenGetRrdFileDefsNil(t *testing.T) {
 
 func TestDoesNotConnectToRrdCacheDWhenGetRrdFilesReturnsNil(t *testing.T) {
 	mockRrdClient := MockRrdClient{}
-	h := NewHandler(&mockRrdClient, func(gollector.Check, gollector.Result) []RrdFileDef {
+	h := NewHandler(&mockRrdClient, func(gopoller.Check, gopoller.Result) []RrdFileDef {
 		return nil
 	})
 
-	check := gollector.Check{}
-	result := *gollector.NewResult(gollector.StateOk, "", nil)
+	check := gopoller.Check{}
+	result := *gopoller.NewResult(gopoller.StateOk, "", nil)
 
 	h.Process(check, result, nil)
 
@@ -42,14 +42,14 @@ func TestDoesNotConnectToRrdCacheDWhenGetRrdFilesReturnsNil(t *testing.T) {
 
 func TestConnectsToRrdCacheDWhenGetRrdFilesReturnsData(t *testing.T) {
 	mockRrdClient := MockRrdClient{}
-	h := NewHandler(&mockRrdClient, func(gollector.Check, gollector.Result) []RrdFileDef {
+	h := NewHandler(&mockRrdClient, func(gopoller.Check, gopoller.Result) []RrdFileDef {
 		return []RrdFileDef{
 			{Filename: "/foo.rrd"},
 		}
 	})
 
-	check := gollector.Check{}
-	result := *gollector.NewResult(gollector.StateOk, "", nil)
+	check := gopoller.Check{}
+	result := *gopoller.NewResult(gopoller.StateOk, "", nil)
 
 	h.Process(check, result, nil)
 
@@ -60,7 +60,7 @@ func TestConnectsToRrdCacheDWhenGetRrdFilesReturnsData(t *testing.T) {
 
 func TestOnlyCreatesRrdFilesThatDontExist(t *testing.T) {
 	mockRrdClient := MockRrdClient{}
-	h := NewHandler(&mockRrdClient, func(gollector.Check, gollector.Result) []RrdFileDef {
+	h := NewHandler(&mockRrdClient, func(gopoller.Check, gopoller.Result) []RrdFileDef {
 		return []RrdFileDef{
 			{Filename: "/foo1.rrd"},
 			{Filename: "/foo2.rrd"},
@@ -68,8 +68,8 @@ func TestOnlyCreatesRrdFilesThatDontExist(t *testing.T) {
 		}
 	})
 
-	check := gollector.Check{}
-	result := *gollector.NewResult(gollector.StateOk, "", nil)
+	check := gopoller.Check{}
+	result := *gopoller.NewResult(gopoller.StateOk, "", nil)
 
 	// this will return a successful response for the file /foo1.rrd only
 	lastMock = func(file string) (time.Time, error) {
@@ -93,7 +93,7 @@ func TestOnlyCreatesRrdFilesThatDontExist(t *testing.T) {
 
 func TestIssuesCorrectBatchUpdateCommands(t *testing.T) {
 	mockRrdClient := MockRrdClient{}
-	h := NewHandler(&mockRrdClient, func(gollector.Check, gollector.Result) []RrdFileDef {
+	h := NewHandler(&mockRrdClient, func(gopoller.Check, gopoller.Result) []RrdFileDef {
 		return []RrdFileDef{
 			{
 				Filename: "/foo1.rrd",
@@ -125,11 +125,11 @@ func TestIssuesCorrectBatchUpdateCommands(t *testing.T) {
 	})
 
 	tm := time.Unix(556549200, 0)
-	check := gollector.Check{}
-	result := gollector.Result{
-		State:      gollector.StateOk,
+	check := gopoller.Check{}
+	result := gopoller.Result{
+		State:      gopoller.StateOk,
 		ReasonCode: "",
-		Metrics: []gollector.ResultMetric{
+		Metrics: []gopoller.ResultMetric{
 			{Label: "mymetric2", Value: "123456"},
 			{Label: "mymetric1", Value: "654321"},
 			{Label: "metric3", Value: "456789"},

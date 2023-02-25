@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/seankndy/gollector"
+	"github.com/seankndy/gopoller"
 	"net"
 	"time"
 )
@@ -32,7 +32,7 @@ type Command struct {
 	CritRespTimeThreshold time.Duration
 }
 
-func (c *Command) Run(check gollector.Check) (gollector.Result, error) {
+func (c *Command) Run(check gopoller.Check) (gopoller.Result, error) {
 	r := &net.Resolver{
 		PreferGo: true,
 		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
@@ -73,24 +73,24 @@ func (c *Command) Run(check gollector.Check) (gollector.Result, error) {
 		var dnsErr *net.DNSError
 		if errors.As(err, &dnsErr) {
 			if dnsErr.Timeout() {
-				return *gollector.NewResult(gollector.StateCrit, "CONNECTION_TIMEOUT", nil), nil
+				return *gopoller.NewResult(gopoller.StateCrit, "CONNECTION_TIMEOUT", nil), nil
 			}
 		}
 
-		return *gollector.NewResult(gollector.StateUnknown, "CMD_FAILURE", nil), err
+		return *gopoller.NewResult(gopoller.StateUnknown, "CMD_FAILURE", nil), err
 	}
 
 	respTime := time.Now().Sub(startTime)
 	respMs := float64(respTime.Microseconds()) / float64(time.Microsecond)
 
-	resultMetrics := []gollector.ResultMetric{
+	resultMetrics := []gopoller.ResultMetric{
 		{
 			Label: "resp",
 			Value: fmt.Sprintf("%.3f", respMs),
-			Type:  gollector.ResultMetricGauge,
+			Type:  gopoller.ResultMetricGauge,
 		},
 	}
-	var resultState gollector.ResultState
+	var resultState gopoller.ResultState
 	var resultReasonCode string
 
 	expectedMatches := true
@@ -111,18 +111,18 @@ func (c *Command) Run(check gollector.Check) (gollector.Result, error) {
 	}
 
 	if !expectedMatches {
-		resultState = gollector.StateCrit
+		resultState = gopoller.StateCrit
 		resultReasonCode = "UNEXPECTED_RESP"
 	} else if respTime > c.CritRespTimeThreshold {
-		resultState = gollector.StateCrit
+		resultState = gopoller.StateCrit
 		resultReasonCode = "RESP_TIME_EXCEEDED"
 	} else if respTime > c.WarnRespTimeThreshold {
-		resultState = gollector.StateWarn
+		resultState = gopoller.StateWarn
 		resultReasonCode = "RESP_TIME_EXCEEDED"
 	} else {
-		resultState = gollector.StateOk
+		resultState = gopoller.StateOk
 		resultReasonCode = ""
 	}
 
-	return *gollector.NewResult(resultState, resultReasonCode, resultMetrics), nil
+	return *gopoller.NewResult(resultState, resultReasonCode, resultMetrics), nil
 }

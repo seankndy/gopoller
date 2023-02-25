@@ -2,7 +2,7 @@ package smtp
 
 import (
 	"errors"
-	"github.com/seankndy/gollector"
+	"github.com/seankndy/gopoller"
 	"github.com/stretchr/testify/mock"
 	"reflect"
 	"testing"
@@ -20,16 +20,16 @@ func TestResultMetricsReturnedProperly(t *testing.T) {
 		ExpectedResponseCode: 250,
 	}
 	cmd.SetClient(mockClient)
-	result, err := cmd.Run(gollector.Check{})
+	result, err := cmd.Run(gopoller.Check{})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 
-	want := []gollector.ResultMetric{
+	want := []gopoller.ResultMetric{
 		{
 			Label: "resp",
 			Value: "123.451",
-			Type:  gollector.ResultMetricGauge,
+			Type:  gopoller.ResultMetricGauge,
 		},
 	}
 	got := result.Metrics
@@ -49,15 +49,15 @@ func TestReturnsNotReadyResultWhenConnectReturnsNotReadyErr(t *testing.T) {
 		ExpectedResponseCode: 250,
 	}
 	cmd.SetClient(mockClient)
-	result, err := cmd.Run(gollector.Check{})
+	result, err := cmd.Run(gopoller.Check{})
 
 	mock.AssertExpectationsForObjects(t, mockClient)
 
 	if err == nil {
 		t.Error("expected error, got nil")
 	}
-	if result.State != gollector.StateCrit {
-		t.Errorf("wanted result state %v, got %v", gollector.StateCrit, result.State)
+	if result.State != gopoller.StateCrit {
+		t.Errorf("wanted result state %v, got %v", gopoller.StateCrit, result.State)
 	}
 	if result.ReasonCode != "SMTP_NOT_READY" {
 		t.Errorf("wanted result reason code SMTP_NOT_READY, got %v", result.ReasonCode)

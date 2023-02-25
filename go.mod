@@ -1,4 +1,4 @@
-module github.com/seankndy/gollector
+module github.com/seankndy/gopoller
 
 go 1.20
 

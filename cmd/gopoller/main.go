@@ -3,14 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/seankndy/gollector"
-	"github.com/seankndy/gollector/command/dns"
-	"github.com/seankndy/gollector/command/junsubpool"
-	"github.com/seankndy/gollector/command/ping"
-	"github.com/seankndy/gollector/command/smtp"
-	"github.com/seankndy/gollector/command/snmp"
-	dummy2 "github.com/seankndy/gollector/handler/dummy"
-	"github.com/seankndy/gollector/handler/rrdcached"
+	"github.com/seankndy/gopoller"
+	"github.com/seankndy/gopoller/command/dns"
+	"github.com/seankndy/gopoller/command/junsubpool"
+	"github.com/seankndy/gopoller/command/ping"
+	"github.com/seankndy/gopoller/command/smtp"
+	"github.com/seankndy/gopoller/command/snmp"
+	dummy2 "github.com/seankndy/gopoller/handler/dummy"
+	"github.com/seankndy/gopoller/handler/rrdcached"
 	"os"
 	"os/signal"
 	"syscall"
@@ -18,27 +18,27 @@ import (
 )
 
 func main() {
-	checkQueue := gollector.NewMemoryCheckQueue()
-	server := gollector.NewServer(context.Background(), checkQueue)
+	checkQueue := gopoller.NewMemoryCheckQueue()
+	server := gopoller.NewServer(context.Background(), checkQueue)
 	server.MaxRunningChecks = 2
 	server.AutoReEnqueue = true
-	server.OnCheckExecuting = func(check gollector.Check) {
+	server.OnCheckExecuting = func(check gopoller.Check) {
 		//fmt.Printf("Check beginning execution: %v\n", check)
 	}
-	server.OnCheckErrored = func(check gollector.Check, err error) {
+	server.OnCheckErrored = func(check gopoller.Check, err error) {
 		fmt.Printf("CHECK ERROR: %v", err)
 	}
-	server.OnCheckFinished = func(check gollector.Check, runDuration time.Duration) {
+	server.OnCheckFinished = func(check gopoller.Check, runDuration time.Duration) {
 		fmt.Printf("Check finished execution: %v (%.3f seconds)\n", check, runDuration.Seconds())
 	}
 
 	// signal handler
 	handleSignals(server, checkQueue)
 
-	tenSecondPeriodic := gollector.PeriodicSchedule{IntervalSeconds: 10}
+	tenSecondPeriodic := gopoller.PeriodicSchedule{IntervalSeconds: 10}
 
 	lastCheck1 := time.Now().Add(-100 * time.Second)
-	checkQueue.Enqueue(gollector.Check{
+	checkQueue.Enqueue(gopoller.Check{
 		Schedule:          &tenSecondPeriodic,
 		SuppressIncidents: false,
 		Meta:              map[string]string{"check1": "check1"},
@@ -52,7 +52,7 @@ func main() {
 			AvgRttWarnThreshold:     20 * time.Millisecond,
 			AvgRttCritThreshold:     50 * time.Millisecond,
 		},
-		Handlers: []gollector.Handler{
+		Handlers: []gopoller.Handler{
 			dummy2.Handler{},
 		},
 		LastCheck:  &lastCheck1,
@@ -60,21 +60,21 @@ func main() {
 	})
 
 	lastCheck2 := time.Now().Add(-90 * time.Second)
-	checkQueue.Enqueue(gollector.Check{
+	checkQueue.Enqueue(gopoller.Check{
 		Schedule:          &tenSecondPeriodic,
 		SuppressIncidents: false,
 		Meta:              map[string]string{"check2": "check2"},
 		Command: snmp.NewCommand("209.193.82.100", "public", []snmp.OidMonitor{
 			*snmp.NewOidMonitor(".1.3.6.1.2.1.2.2.1.7.554", "ifAdminStatus"),
 		}),
-		Handlers: []gollector.Handler{
+		Handlers: []gopoller.Handler{
 			dummy2.Handler{},
 		},
 		LastCheck:  &lastCheck2,
 		LastResult: nil,
 	})
 
-	checkQueue.Enqueue(gollector.Check{
+	checkQueue.Enqueue(gopoller.Check{
 		Schedule:          &tenSecondPeriodic,
 		SuppressIncidents: false,
 		Meta:              map[string]string{"check3": "check3"},
@@ -88,14 +88,14 @@ func main() {
 			WarnRespTimeThreshold: 20 * time.Millisecond,
 			CritRespTimeThreshold: 40 * time.Millisecond,
 		},
-		Handlers: []gollector.Handler{
+		Handlers: []gopoller.Handler{
 			dummy2.Handler{},
 		},
 		LastCheck:  nil,
 		LastResult: nil,
 	})
 
-	checkQueue.Enqueue(gollector.Check{
+	checkQueue.Enqueue(gopoller.Check{
 		Schedule:          &tenSecondPeriodic,
 		SuppressIncidents: false,
 		Meta:              map[string]string{"check4": "check4"},
@@ -105,22 +105,22 @@ func main() {
 			Timeout:               5 * time.Second,
 			WarnRespTimeThreshold: 25 * time.Millisecond,
 			CritRespTimeThreshold: 50 * time.Millisecond,
-			Send:                  "HELO gollector.local",
+			Send:                  "HELO gopoller.local",
 			ExpectedResponseCode:  250,
 		},
-		Handlers: []gollector.Handler{
+		Handlers: []gopoller.Handler{
 			dummy2.Handler{},
 		},
 		LastCheck:  nil,
 		LastResult: nil,
 	})
 
-	checkQueue.Enqueue(gollector.Check{
+	checkQueue.Enqueue(gopoller.Check{
 		Schedule:          &tenSecondPeriodic,
 		SuppressIncidents: false,
 		Meta:              map[string]string{"check5": "check5"},
 		Command:           junsubpool.NewCommand("209.193.82.44", "public", []int{1000002, 1000003, 1000004, 1000005, 1000006, 1000007, 1000008, 1000012, 1000015, 1000017, 1000019}, 95, 99),
-		Handlers: []gollector.Handler{
+		Handlers: []gopoller.Handler{
 			dummy2.Handler{},
 		},
 		LastCheck:  nil,
@@ -135,7 +135,7 @@ func main() {
 	fmt.Println("Exiting.")
 }
 
-func handleSignals(server *gollector.Server, checkQueue gollector.CheckQueue) {
+func handleSignals(server *gopoller.Server, checkQueue gopoller.CheckQueue) {
 	go func() {
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGINT)
@@ -160,19 +160,19 @@ func handleSignals(server *gollector.Server, checkQueue gollector.CheckQueue) {
 }
 
 // example getRrdFileDefs func:
-func getRrdFileDefs(check gollector.Check, result gollector.Result) []rrdcached.RrdFileDef {
-	_, isPeriodic := check.Schedule.(gollector.PeriodicSchedule)
+func getRrdFileDefs(check gopoller.Check, result gopoller.Result) []rrdcached.RrdFileDef {
+	_, isPeriodic := check.Schedule.(gopoller.PeriodicSchedule)
 	// no spec if no metrics or if the underlying check isn't on an interval schedule
 	if result.Metrics == nil || !isPeriodic {
 		return nil
 	}
 
-	interval := check.Schedule.(gollector.PeriodicSchedule).IntervalSeconds
+	interval := check.Schedule.(gopoller.PeriodicSchedule).IntervalSeconds
 
 	var rrdFileDefs []rrdcached.RrdFileDef
 	for _, metric := range result.Metrics {
 		var dst rrdcached.DST
-		if metric.Type == gollector.ResultMetricCounter {
+		if metric.Type == gopoller.ResultMetricCounter {
 			dst = rrdcached.Counter
 		} else {
 			dst = rrdcached.Gauge

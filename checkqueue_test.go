@@ -1,4 +1,4 @@
-package gollector
+package gopoller
 
 import (
 	"testing"

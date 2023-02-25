@@ -2,7 +2,7 @@ package rrdcached
 
 import (
 	"fmt"
-	"github.com/seankndy/gollector"
+	"github.com/seankndy/gopoller"
 	"strings"
 	"time"
 )
@@ -13,21 +13,21 @@ type Handler struct {
 
 	// GetRrdFileDefs should return a slice of RrdFileDefs defining the RRD file specifications for a given Check and
 	// it's Result data.
-	GetRrdFileDefs func(gollector.Check, gollector.Result) []RrdFileDef
+	GetRrdFileDefs func(gopoller.Check, gopoller.Result) []RrdFileDef
 }
 
-func NewHandler(client Client, getRrdFileDefs func(gollector.Check, gollector.Result) []RrdFileDef) *Handler {
+func NewHandler(client Client, getRrdFileDefs func(gopoller.Check, gopoller.Result) []RrdFileDef) *Handler {
 	return &Handler{
 		client:         client,
 		GetRrdFileDefs: getRrdFileDefs,
 	}
 }
 
-func (h Handler) Mutate(check *gollector.Check, result *gollector.Result, newIncident *gollector.Incident) {
+func (h Handler) Mutate(check *gopoller.Check, result *gopoller.Result, newIncident *gopoller.Incident) {
 	return
 }
 
-func (h Handler) Process(check gollector.Check, result gollector.Result, newIncident *gollector.Incident) (err error) {
+func (h Handler) Process(check gopoller.Check, result gopoller.Result, newIncident *gopoller.Incident) (err error) {
 	getRrdFileDefs := h.GetRrdFileDefs
 	if getRrdFileDefs == nil {
 		return
@@ -93,7 +93,7 @@ type RrdFileDef struct {
 	DataSourceToMetricMappings map[string]string
 }
 
-func buildUpdateCommands(rrdFileDefs []RrdFileDef, result gollector.Result) []*Cmd {
+func buildUpdateCommands(rrdFileDefs []RrdFileDef, result gopoller.Result) []*Cmd {
 	var updateCmds []*Cmd
 	for _, rrdFile := range rrdFileDefs {
 		var dsValues []string
@@ -107,7 +107,7 @@ func buildUpdateCommands(rrdFileDefs []RrdFileDef, result gollector.Result) []*C
 				}
 			}
 
-			var metric *gollector.ResultMetric
+			var metric *gopoller.ResultMetric
 			for _, m := range result.Metrics {
 				if m.Label == metricLabel {
 					metric = &m

@@ -3,7 +3,7 @@ package smtp
 import (
 	"errors"
 	"fmt"
-	"github.com/seankndy/gollector"
+	"github.com/seankndy/gopoller"
 	"time"
 )
 
@@ -47,7 +47,7 @@ var (
 	DefaultClient = &TextProtoSmtp{}
 )
 
-func (c *Command) Run(gollector.Check) (result gollector.Result, err error) {
+func (c *Command) Run(gopoller.Check) (result gopoller.Result, err error) {
 	var client Client
 	if c.client != nil {
 		client = c.client
@@ -60,10 +60,10 @@ func (c *Command) Run(gollector.Check) (result gollector.Result, err error) {
 		var notReadyErr *NotReadyErr
 		if errors.As(err, &notReadyErr) {
 			client.Close()
-			return *gollector.NewResult(gollector.StateCrit, "SMTP_NOT_READY", nil), err
+			return *gopoller.NewResult(gopoller.StateCrit, "SMTP_NOT_READY", nil), err
 		}
 
-		return *gollector.NewResult(gollector.StateCrit, "CONNECTION_ERROR", nil), err
+		return *gopoller.NewResult(gopoller.StateCrit, "CONNECTION_ERROR", nil), err
 	}
 	defer func() {
 		errC := client.Close()
@@ -74,33 +74,33 @@ func (c *Command) Run(gollector.Check) (result gollector.Result, err error) {
 
 	actualResponseCode, respTime, err := client.Cmd(c.Send)
 	if err != nil {
-		return *gollector.MakeUnknownResult("CMD_FAILURE"), err
+		return *gopoller.MakeUnknownResult("CMD_FAILURE"), err
 	}
 	respMs := float64(respTime.Microseconds()) / float64(time.Microsecond)
 
-	resultMetrics := []gollector.ResultMetric{
+	resultMetrics := []gopoller.ResultMetric{
 		{
 			Label: "resp",
 			Value: fmt.Sprintf("%.3f", respMs),
-			Type:  gollector.ResultMetricGauge,
+			Type:  gopoller.ResultMetricGauge,
 		},
 	}
-	var resultState gollector.ResultState
+	var resultState gopoller.ResultState
 	var resultReasonCode string
 
 	if actualResponseCode != c.ExpectedResponseCode {
-		resultState = gollector.StateCrit
+		resultState = gopoller.StateCrit
 		resultReasonCode = "UNEXPECTED_RESP"
 	} else if respTime > c.CritRespTimeThreshold {
-		resultState = gollector.StateCrit
+		resultState = gopoller.StateCrit
 		resultReasonCode = "RESP_TIME_EXCEEDED"
 	} else if respTime > c.WarnRespTimeThreshold {
-		resultState = gollector.StateWarn
+		resultState = gopoller.StateWarn
 		resultReasonCode = "RESP_TIME_EXCEEDED"
 	} else {
-		resultState = gollector.StateOk
+		resultState = gopoller.StateOk
 		resultReasonCode = ""
 	}
 
-	return *gollector.NewResult(resultState, resultReasonCode, resultMetrics), nil
+	return *gopoller.NewResult(resultState, resultReasonCode, resultMetrics), nil
 }

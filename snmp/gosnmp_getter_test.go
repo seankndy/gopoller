@@ -31,14 +31,14 @@ func TestBasicGetQuery(t *testing.T) {
 }
 
 func getTestingAddrPortAndCommunity(t *testing.T) (string, uint16, string) {
-	addr := os.Getenv("GOLLECTOR_SNMP_ADDR")
-	community := os.Getenv("GOLLECTOR_SNMP_COMMUNITY")
+	addr := os.Getenv("GOPOLLER_SNMP_ADDR")
+	community := os.Getenv("GOPOLLER_SNMP_COMMUNITY")
 	if community == "" {
 		community = "public"
 	}
 
 	if addr == "" {
-		t.Skip("GOLLECTOR_SNMP_ADDR env variable is not set, skipping test")
+		t.Skip("GOPOLLER_SNMP_ADDR env variable is not set, skipping test")
 	}
 
 	parts := strings.Split(addr, ":")
