@@ -52,7 +52,7 @@ func main() {
 			AvgRttWarnThreshold:     20,
 			AvgRttCritThreshold:     50,
 		}),
-    ))
+	))
 
 	checkQueue.Enqueue(*check.NewCheck(
 		"check2",
