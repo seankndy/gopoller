@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/seankndy/gopoller"
+	"github.com/seankndy/gopoller/check"
 	"github.com/seankndy/gopoller/command/dns"
 	"github.com/seankndy/gopoller/command/junsubpool"
 	"github.com/seankndy/gopoller/command/ping"
@@ -19,31 +20,27 @@ import (
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
-	checkQueue := gopoller.NewMemoryCheckQueue()
+	checkQueue := check.NewMemoryCheckQueue()
 	server := gopoller.NewServer(checkQueue)
 	server.MaxRunningChecks = 2
 	server.AutoReEnqueue = true
-	server.OnCheckExecuting = func(check gopoller.Check) {
+	server.OnCheckExecuting = func(chk check.Check) {
 		//fmt.Printf("Check beginning execution: %v\n", check)
 	}
-	server.OnCheckErrored = func(check gopoller.Check, err error) {
+	server.OnCheckErrored = func(chk check.Check, err error) {
 		fmt.Printf("CHECK ERROR: %v", err)
 	}
-	server.OnCheckFinished = func(check gopoller.Check, runDuration time.Duration) {
-		fmt.Printf("Check finished execution: %v (%.3f seconds)\n", check, runDuration.Seconds())
+	server.OnCheckFinished = func(chk check.Check, runDuration time.Duration) {
+		fmt.Printf("Check finished execution: %v (%.3f seconds)\n", chk, runDuration.Seconds())
 	}
 
 	// signal handler
 	handleSignals(cancel)
 
-	tenSecondPeriodic := gopoller.PeriodicSchedule{IntervalSeconds: 10}
-
 	lastCheck1 := time.Now().Add(-100 * time.Second)
-	checkQueue.Enqueue(gopoller.Check{
-		Schedule:          &tenSecondPeriodic,
-		SuppressIncidents: false,
-		Meta:              map[string]string{"check1": "check1"},
-		Command: &ping.Command{
+	check1 := check.NewCheck(
+		"check1",
+		check.WithCommand(&ping.Command{
 			Addr:                    "209.193.82.100",
 			Count:                   5,
 			Interval:                100 * time.Millisecond,
@@ -52,34 +49,28 @@ func main() {
 			PacketLossCritThreshold: 95,
 			AvgRttWarnThreshold:     20 * time.Millisecond,
 			AvgRttCritThreshold:     50 * time.Millisecond,
-		},
-		Handlers: []gopoller.Handler{
-			dummy2.Handler{},
-		},
-		LastCheck:  &lastCheck1,
-		LastResult: nil,
-	})
+		}),
+		check.WithPeriodicSchedule(10),
+		check.WithHandlers([]check.Handler{dummy2.Handler{}}),
+	)
+	check1.LastCheck = &lastCheck1
+	checkQueue.Enqueue(*check1)
 
 	lastCheck2 := time.Now().Add(-90 * time.Second)
-	checkQueue.Enqueue(gopoller.Check{
-		Schedule:          &tenSecondPeriodic,
-		SuppressIncidents: false,
-		Meta:              map[string]string{"check2": "check2"},
-		Command: snmp.NewCommand("209.193.82.100", "public", []snmp.OidMonitor{
+	check2 := check.NewCheck(
+		"check2",
+		check.WithCommand(snmp.NewCommand("209.193.82.100", "public", []snmp.OidMonitor{
 			*snmp.NewOidMonitor(".1.3.6.1.2.1.2.2.1.7.554", "ifAdminStatus"),
-		}),
-		Handlers: []gopoller.Handler{
-			dummy2.Handler{},
-		},
-		LastCheck:  &lastCheck2,
-		LastResult: nil,
-	})
+		})),
+		check.WithPeriodicSchedule(10),
+		check.WithHandlers([]check.Handler{dummy2.Handler{}}),
+	)
+	check2.LastCheck = &lastCheck2
+	checkQueue.Enqueue(*check2)
 
-	checkQueue.Enqueue(gopoller.Check{
-		Schedule:          &tenSecondPeriodic,
-		SuppressIncidents: false,
-		Meta:              map[string]string{"check3": "check3"},
-		Command: &dns.Command{
+	check3 := check.NewCheck(
+		"check3",
+		check.WithCommand(&dns.Command{
 			ServerIp:              "209.193.72.2",
 			ServerPort:            53,
 			ServerTimeout:         3 * time.Second,
@@ -88,19 +79,15 @@ func main() {
 			Expected:              &[]string{"209.193.72.54"},
 			WarnRespTimeThreshold: 20 * time.Millisecond,
 			CritRespTimeThreshold: 40 * time.Millisecond,
-		},
-		Handlers: []gopoller.Handler{
-			dummy2.Handler{},
-		},
-		LastCheck:  nil,
-		LastResult: nil,
-	})
+		}),
+		check.WithPeriodicSchedule(10),
+		check.WithHandlers([]check.Handler{dummy2.Handler{}}),
+	)
+	checkQueue.Enqueue(*check3)
 
-	checkQueue.Enqueue(gopoller.Check{
-		Schedule:          &tenSecondPeriodic,
-		SuppressIncidents: false,
-		Meta:              map[string]string{"check4": "check4"},
-		Command: &smtp.Command{
+	check4 := check.NewCheck(
+		"check4",
+		check.WithCommand(&smtp.Command{
 			Addr:                  "smtp.vcn.com",
 			Port:                  25,
 			Timeout:               5 * time.Second,
@@ -108,26 +95,21 @@ func main() {
 			CritRespTimeThreshold: 50 * time.Millisecond,
 			Send:                  "HELO gopoller.local",
 			ExpectedResponseCode:  250,
-		},
-		Handlers: []gopoller.Handler{
-			dummy2.Handler{},
-		},
-		LastCheck:  nil,
-		LastResult: nil,
-	})
+		}),
+		check.WithPeriodicSchedule(10),
+		check.WithHandlers([]check.Handler{dummy2.Handler{}}),
+	)
+	checkQueue.Enqueue(*check4)
 
-	checkQueue.Enqueue(gopoller.Check{
-		Schedule:          &tenSecondPeriodic,
-		SuppressIncidents: false,
-		Meta:              map[string]string{"check5": "check5"},
-		Command:           junsubpool.NewCommand("209.193.82.44", "public", []int{1000002, 1000003, 1000004, 1000005, 1000006, 1000007, 1000008, 1000012, 1000015, 1000017, 1000019}, 95, 99),
-		Handlers: []gopoller.Handler{
-			dummy2.Handler{},
-		},
-		LastCheck:  nil,
-		LastResult: nil,
-	})
+	check5 := check.NewCheck(
+		"check5",
+		check.WithCommand(junsubpool.NewCommand("209.193.82.44", "public", []int{1000002, 1000003, 1000004, 1000005, 1000006, 1000007, 1000008, 1000012, 1000015, 1000017, 1000019}, 95, 99)),
+		check.WithPeriodicSchedule(10),
+		check.WithHandlers([]check.Handler{dummy2.Handler{}}),
+	)
+	checkQueue.Enqueue(*check5)
 
+	// run the server
 	server.Run(ctx)
 
 	// flush the queue prior to shut down
@@ -161,19 +143,19 @@ func handleSignals(cancel func()) {
 }
 
 // example getRrdFileDefs func:
-func getRrdFileDefs(check gopoller.Check, result gopoller.Result) []rrdcached.RrdFileDef {
-	_, isPeriodic := check.Schedule.(gopoller.PeriodicSchedule)
+func getRrdFileDefs(chk check.Check, result check.Result) []rrdcached.RrdFileDef {
+	_, isPeriodic := chk.Schedule.(check.PeriodicSchedule)
 	// no spec if no metrics or if the underlying check isn't on an interval schedule
 	if result.Metrics == nil || !isPeriodic {
 		return nil
 	}
 
-	interval := check.Schedule.(gopoller.PeriodicSchedule).IntervalSeconds
+	interval := chk.Schedule.(check.PeriodicSchedule).IntervalSeconds
 
 	var rrdFileDefs []rrdcached.RrdFileDef
 	for _, metric := range result.Metrics {
 		var dst rrdcached.DST
-		if metric.Type == gopoller.ResultMetricCounter {
+		if metric.Type == check.ResultMetricCounter {
 			dst = rrdcached.Counter
 		} else {
 			dst = rrdcached.Gauge
@@ -185,7 +167,7 @@ func getRrdFileDefs(check gopoller.Check, result gopoller.Result) []rrdcached.Rr
 		yearlyAvg := 43200
 
 		rrdFileDefs = append(rrdFileDefs, rrdcached.RrdFileDef{
-			Filename:    "/Users/sean/rrd_test/" + check.Id + "/" + ds.Name(),
+			Filename:    "/Users/sean/rrd_test/" + chk.Id + "/" + ds.Name(),
 			DataSources: []rrdcached.DS{ds},
 			RoundRobinArchives: []rrdcached.RRA{
 				rrdcached.NewMinRRA(0.5, 1, 86400/interval),

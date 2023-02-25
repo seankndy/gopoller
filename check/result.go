@@ -1,6 +1,8 @@
-package gopoller
+package check
 
-import "time"
+import (
+	"time"
+)
 
 type ResultState uint8
 

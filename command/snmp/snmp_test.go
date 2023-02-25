@@ -2,7 +2,7 @@ package snmp
 
 import (
 	"errors"
-	"github.com/seankndy/gopoller"
+	"github.com/seankndy/gopoller/check"
 	"github.com/seankndy/gopoller/snmp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -17,9 +17,9 @@ func TestReturnsUnknownResultAndErrorOnSnmpGetFailure(t *testing.T) {
 		*NewOidMonitor("1.2.3.4.5.6.7.8", "foo"),
 	}}
 	cmd.SetGetter(getterMock)
-	result, err := cmd.Run(gopoller.Check{})
+	result, err := cmd.Run(check.Check{})
 
-	assert.Equal(t, gopoller.StateUnknown, result.State, "invalid result state")
+	assert.Equal(t, check.StateUnknown, result.State, "invalid result state")
 	assert.NotNil(t, err)
 }
 
@@ -49,23 +49,23 @@ func TestReturnsResultWithMetricsFromSnmp(t *testing.T) {
 		*NewOidMonitor("1.2.3.4.5.6.7.8.9.1", "foo3"),
 	}}
 	cmd.SetGetter(getterMock)
-	result, _ := cmd.Run(gopoller.Check{})
+	result, _ := cmd.Run(check.Check{})
 
-	assert.Equal(t, []gopoller.ResultMetric{
+	assert.Equal(t, []check.ResultMetric{
 		{
 			Label: "foo1",
 			Value: "1234567",
-			Type:  gopoller.ResultMetricGauge,
+			Type:  check.ResultMetricGauge,
 		},
 		{
 			Label: "foo2",
 			Value: "7654321",
-			Type:  gopoller.ResultMetricGauge,
+			Type:  check.ResultMetricGauge,
 		},
 		{
 			Label: "foo3",
 			Value: "18237189237498",
-			Type:  gopoller.ResultMetricCounter,
+			Type:  check.ResultMetricCounter,
 		},
 	}, result.Metrics)
 }
@@ -88,12 +88,12 @@ func TestPostProcessValuesAreAppliedToGauges(t *testing.T) {
 		},
 	}}
 	cmd.SetGetter(getterMock)
-	result, _ := cmd.Run(gopoller.Check{})
-	assert.Equal(t, []gopoller.ResultMetric{
+	result, _ := cmd.Run(check.Check{})
+	assert.Equal(t, []check.ResultMetric{
 		{
 			Label: "foo1",
 			Value: "1234.567",
-			Type:  gopoller.ResultMetricGauge,
+			Type:  check.ResultMetricGauge,
 		},
 	}, result.Metrics)
 }
@@ -126,18 +126,18 @@ func TestPostProcessValuesAreNotAppliedToCounters(t *testing.T) {
 		},
 	}}
 	cmd.SetGetter(getterMock)
-	result, _ := cmd.Run(gopoller.Check{})
+	result, _ := cmd.Run(check.Check{})
 
-	assert.Equal(t, []gopoller.ResultMetric{
+	assert.Equal(t, []check.ResultMetric{
 		{
 			Label: "foo1",
 			Value: "1234567",
-			Type:  gopoller.ResultMetricCounter,
+			Type:  check.ResultMetricCounter,
 		},
 		{
 			Label: "foo2",
 			Value: "1234567123131",
-			Type:  gopoller.ResultMetricCounter,
+			Type:  check.ResultMetricCounter,
 		},
 	}, result.Metrics)
 }
@@ -145,15 +145,15 @@ func TestPostProcessValuesAreNotAppliedToCounters(t *testing.T) {
 func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 	tests := []struct {
 		name            string
-		check           gopoller.Check
+		check           check.Check
 		snmpObjects     []snmp.Object
 		oidMonitors     []OidMonitor
-		wantResultState gopoller.ResultState
+		wantResultState check.ResultState
 		wantReasonCode  string
 	}{
 		{
 			name:  "warn_min",
-			check: gopoller.Check{},
+			check: check.Check{},
 			snmpObjects: []snmp.Object{
 				{
 					Type:  snmp.Uinteger32,
@@ -170,12 +170,12 @@ func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 					WarnMinReasonCode: "FOO_MIN",
 				},
 			},
-			wantResultState: gopoller.StateWarn,
+			wantResultState: check.StateWarn,
 			wantReasonCode:  "FOO_MIN",
 		},
 		{
 			name:  "warn_max",
-			check: gopoller.Check{},
+			check: check.Check{},
 			snmpObjects: []snmp.Object{
 				{
 					Type:  snmp.Uinteger32,
@@ -192,12 +192,12 @@ func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 					WarnMaxReasonCode: "FOO_MAX",
 				},
 			},
-			wantResultState: gopoller.StateWarn,
+			wantResultState: check.StateWarn,
 			wantReasonCode:  "FOO_MAX",
 		},
 		{
 			name:  "crit_min",
-			check: gopoller.Check{},
+			check: check.Check{},
 			snmpObjects: []snmp.Object{
 				{
 					Type:  snmp.Uinteger32,
@@ -214,12 +214,12 @@ func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 					CritMinReasonCode: "FOO_MIN",
 				},
 			},
-			wantResultState: gopoller.StateCrit,
+			wantResultState: check.StateCrit,
 			wantReasonCode:  "FOO_MIN",
 		},
 		{
 			name:  "crit_max",
-			check: gopoller.Check{},
+			check: check.Check{},
 			snmpObjects: []snmp.Object{
 				{
 					Type:  snmp.Uinteger32,
@@ -236,12 +236,12 @@ func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 					CritMaxReasonCode: "FOO_MAX",
 				},
 			},
-			wantResultState: gopoller.StateCrit,
+			wantResultState: check.StateCrit,
 			wantReasonCode:  "FOO_MAX",
 		},
 		{
 			name:  "ok",
-			check: gopoller.Check{},
+			check: check.Check{},
 			snmpObjects: []snmp.Object{
 				{
 					Type:  snmp.Uinteger32,
@@ -264,16 +264,16 @@ func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 					CritMaxReasonCode: "CRIT_MAX",
 				},
 			},
-			wantResultState: gopoller.StateOk,
+			wantResultState: check.StateOk,
 			wantReasonCode:  "",
 		},
 		{
 			name: "counter_rollover32_warn_min",
-			check: gopoller.Check{LastResult: gopoller.NewResult(gopoller.StateOk, "", []gopoller.ResultMetric{
+			check: check.Check{LastResult: check.NewResult(check.StateOk, "", []check.ResultMetric{
 				{
 					Label: "foo1",
 					Value: "4294962295",
-					Type:  gopoller.ResultMetricCounter,
+					Type:  check.ResultMetricCounter,
 				},
 			})},
 			snmpObjects: []snmp.Object{
@@ -293,16 +293,16 @@ func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 					WarnMinReasonCode: "WARN_MIN",
 				},
 			},
-			wantResultState: gopoller.StateWarn,
+			wantResultState: check.StateWarn,
 			wantReasonCode:  "WARN_MIN",
 		},
 		{
 			name: "counter_rollover64_warn_min",
-			check: gopoller.Check{LastResult: gopoller.NewResult(gopoller.StateOk, "", []gopoller.ResultMetric{
+			check: check.Check{LastResult: check.NewResult(check.StateOk, "", []check.ResultMetric{
 				{
 					Label: "foo1",
 					Value: "18446744073709551515",
-					Type:  gopoller.ResultMetricCounter,
+					Type:  check.ResultMetricCounter,
 				},
 			})},
 			snmpObjects: []snmp.Object{
@@ -322,16 +322,16 @@ func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 					WarnMinReasonCode: "WARN_MIN",
 				},
 			},
-			wantResultState: gopoller.StateWarn,
+			wantResultState: check.StateWarn,
 			wantReasonCode:  "WARN_MIN",
 		},
 		{
 			name: "crit_before_warn",
-			check: gopoller.Check{LastResult: gopoller.NewResult(gopoller.StateOk, "", []gopoller.ResultMetric{
+			check: check.Check{LastResult: check.NewResult(check.StateOk, "", []check.ResultMetric{
 				{
 					Label: "foo1",
 					Value: "18446744073709551515",
-					Type:  gopoller.ResultMetricCounter,
+					Type:  check.ResultMetricCounter,
 				},
 			})},
 			snmpObjects: []snmp.Object{
@@ -351,7 +351,7 @@ func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 					WarnMinReasonCode: "WARN_MIN",
 				},
 			},
-			wantResultState: gopoller.StateCrit,
+			wantResultState: check.StateCrit,
 			wantReasonCode:  "CRIT_MIN",
 		},
 	}

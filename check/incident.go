@@ -1,4 +1,4 @@
-package gopoller
+package check
 
 import (
 	"github.com/google/uuid"
@@ -25,7 +25,7 @@ func (i *Incident) Acknowledge() {
 	i.Acknowledged = &t
 }
 
-func makeIncidentFromResults(lastResult *Result, currentResult Result) Incident {
+func MakeIncidentFromResults(lastResult *Result, currentResult Result) Incident {
 	if lastResult == nil {
 		lastResult = MakeUnknownResult("")
 	}

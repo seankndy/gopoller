@@ -1,8 +1,10 @@
-package gopoller
+package check
 
-import "time"
+import (
+	"time"
+)
 
-type CheckSchedule interface {
+type Schedule interface {
 	IsDue(Check) bool
 	DueAt(Check) time.Time
 }

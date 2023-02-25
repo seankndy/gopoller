@@ -3,7 +3,7 @@ package smtp
 import (
 	"errors"
 	"fmt"
-	"github.com/seankndy/gopoller"
+	"github.com/seankndy/gopoller/check"
 	"time"
 )
 
@@ -47,7 +47,7 @@ var (
 	DefaultClient = &TextProtoSmtp{}
 )
 
-func (c *Command) Run(gopoller.Check) (result gopoller.Result, err error) {
+func (c *Command) Run(check.Check) (result check.Result, err error) {
 	var client Client
 	if c.client != nil {
 		client = c.client
@@ -60,10 +60,10 @@ func (c *Command) Run(gopoller.Check) (result gopoller.Result, err error) {
 		var notReadyErr *NotReadyErr
 		if errors.As(err, &notReadyErr) {
 			client.Close()
-			return *gopoller.NewResult(gopoller.StateCrit, "SMTP_NOT_READY", nil), err
+			return *check.NewResult(check.StateCrit, "SMTP_NOT_READY", nil), err
 		}
 
-		return *gopoller.NewResult(gopoller.StateCrit, "CONNECTION_ERROR", nil), err
+		return *check.NewResult(check.StateCrit, "CONNECTION_ERROR", nil), err
 	}
 	defer func() {
 		errC := client.Close()
@@ -74,33 +74,33 @@ func (c *Command) Run(gopoller.Check) (result gopoller.Result, err error) {
 
 	actualResponseCode, respTime, err := client.Cmd(c.Send)
 	if err != nil {
-		return *gopoller.MakeUnknownResult("CMD_FAILURE"), err
+		return *check.MakeUnknownResult("CMD_FAILURE"), err
 	}
 	respMs := float64(respTime.Microseconds()) / float64(time.Microsecond)
 
-	resultMetrics := []gopoller.ResultMetric{
+	resultMetrics := []check.ResultMetric{
 		{
 			Label: "resp",
 			Value: fmt.Sprintf("%.3f", respMs),
-			Type:  gopoller.ResultMetricGauge,
+			Type:  check.ResultMetricGauge,
 		},
 	}
-	var resultState gopoller.ResultState
+	var resultState check.ResultState
 	var resultReasonCode string
 
 	if actualResponseCode != c.ExpectedResponseCode {
-		resultState = gopoller.StateCrit
+		resultState = check.StateCrit
 		resultReasonCode = "UNEXPECTED_RESP"
 	} else if respTime > c.CritRespTimeThreshold {
-		resultState = gopoller.StateCrit
+		resultState = check.StateCrit
 		resultReasonCode = "RESP_TIME_EXCEEDED"
 	} else if respTime > c.WarnRespTimeThreshold {
-		resultState = gopoller.StateWarn
+		resultState = check.StateWarn
 		resultReasonCode = "RESP_TIME_EXCEEDED"
 	} else {
-		resultState = gopoller.StateOk
+		resultState = check.StateOk
 		resultReasonCode = ""
 	}
 
-	return *gopoller.NewResult(resultState, resultReasonCode, resultMetrics), nil
+	return *check.NewResult(resultState, resultReasonCode, resultMetrics), nil
 }

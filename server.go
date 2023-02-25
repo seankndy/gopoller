@@ -2,12 +2,13 @@ package gopoller
 
 import (
 	"context"
+	"github.com/seankndy/gopoller/check"
 	"sync"
 	"time"
 )
 
 type Server struct {
-	checkQueue CheckQueue
+	checkQueue check.Queue
 
 	// Should server re-enqueue checks back to the check queue after they finish running
 	AutoReEnqueue bool
@@ -16,16 +17,16 @@ type Server struct {
 	MaxRunningChecks uint64
 
 	// Callback triggerred just prior to check execution (useful for logging)
-	OnCheckExecuting func(check Check)
+	OnCheckExecuting func(check check.Check)
 
 	// Callback triggerred if check command errors (useful for logging)
-	OnCheckErrored func(check Check, err error)
+	OnCheckErrored func(check check.Check, err error)
 
 	// Callback triggered just after a check finishes execution (useful for logging)
-	OnCheckFinished func(check Check, runDuration time.Duration)
+	OnCheckFinished func(check check.Check, runDuration time.Duration)
 }
 
-func NewServer(checkQueue CheckQueue) *Server {
+func NewServer(checkQueue check.Queue) *Server {
 	return &Server{
 		checkQueue:       checkQueue,
 		MaxRunningChecks: 100,
@@ -37,7 +38,7 @@ func (s *Server) Run(ctx context.Context) {
 	runningLimiter := make(chan struct{}, s.MaxRunningChecks)
 	defer close(runningLimiter)
 
-	pendingChecks := make(chan *Check, s.MaxRunningChecks)
+	pendingChecks := make(chan *check.Check, s.MaxRunningChecks)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -56,60 +57,60 @@ func (s *Server) Run(ctx context.Context) {
 			default:
 			}
 
-			var check *Check
+			var chk *check.Check
 			if len(pendingChecks) < cap(pendingChecks) {
-				check = s.checkQueue.Dequeue()
-				if check != nil {
-					pendingChecks <- check
+				chk = s.checkQueue.Dequeue()
+				if chk != nil {
+					pendingChecks <- chk
 				}
 			}
 
-			if check == nil {
+			if chk == nil {
 				time.Sleep(250 * time.Millisecond)
 			}
 		}
 	}()
 
 loop:
-	for check := range pendingChecks {
+	for chk := range pendingChecks {
 		select {
 		case <-ctx.Done():
-			s.checkQueue.Enqueue(*check) // put the check back, we're shutting down
+			s.checkQueue.Enqueue(*chk) // put the check back, we're shutting down
 			break loop
 		case runningLimiter <- struct{}{}:
 			wg.Add(1)
-			go func(check *Check) {
+			go func(chk *check.Check) {
 				defer wg.Done()
 				defer func() {
 					if s.AutoReEnqueue {
-						s.checkQueue.Enqueue(*check)
+						s.checkQueue.Enqueue(*chk)
 					}
 					<-runningLimiter
 				}()
 
 				onCheckExecuting := s.OnCheckExecuting
 				if onCheckExecuting != nil {
-					onCheckExecuting(*check)
+					onCheckExecuting(*chk)
 				}
 				startTime := time.Now()
-				if err := check.Execute(); err != nil {
+				if err := chk.Execute(); err != nil {
 					onCheckErrored := s.OnCheckErrored
 					if onCheckErrored != nil {
-						onCheckErrored(*check, err)
+						onCheckErrored(*chk, err)
 					}
 				}
 				onCheckFinished := s.OnCheckFinished
 				if onCheckFinished != nil {
-					onCheckFinished(*check, time.Now().Sub(startTime))
+					onCheckFinished(*chk, time.Now().Sub(startTime))
 				}
-			}(check)
+			}(chk)
 		}
 	}
 
 	wg.Wait()
 
 	// put any pending checks back into the queue prior to shut down as they never ran
-	for check := range pendingChecks {
-		s.checkQueue.Enqueue(*check)
+	for chk := range pendingChecks {
+		s.checkQueue.Enqueue(*chk)
 	}
 }

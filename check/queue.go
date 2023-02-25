@@ -1,11 +1,11 @@
-package gopoller
+package check
 
 import (
 	"math"
 	"sync"
 )
 
-type CheckQueue interface {
+type Queue interface {
 	Enqueue(check Check)
 	Dequeue() *Check
 	Flush()

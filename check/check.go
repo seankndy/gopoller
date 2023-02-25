@@ -1,4 +1,4 @@
-package gopoller
+package check
 
 import (
 	"github.com/hashicorp/go-multierror"
@@ -11,7 +11,7 @@ type Check struct {
 	Id string
 
 	// Schedule determines when this Check is due to be executed.
-	Schedule CheckSchedule
+	Schedule Schedule
 	Command  Command
 	Meta     map[string]string
 
@@ -22,6 +22,56 @@ type Check struct {
 
 	LastCheck  *time.Time
 	LastResult *Result
+}
+
+type CheckOption func(*Check)
+
+func NewCheck(id string, options ...CheckOption) *Check {
+	check := &Check{
+		Id: id,
+	}
+
+	for _, option := range options {
+		option(check)
+	}
+
+	return check
+}
+
+func WithCommand(cmd Command) CheckOption {
+	return func(c *Check) {
+		c.Command = cmd
+	}
+}
+
+func WithHandlers(handlers []Handler) CheckOption {
+	return func(c *Check) {
+		c.Handlers = handlers
+	}
+}
+
+func WithMeta(meta map[string]string) CheckOption {
+	return func(c *Check) {
+		c.Meta = meta
+	}
+}
+
+func WithSuppressedIncidents() CheckOption {
+	return func(c *Check) {
+		c.SuppressIncidents = true
+	}
+}
+
+func WithPeriodicSchedule(intervalSeconds int) CheckOption {
+	return func(c *Check) {
+		c.Schedule = &PeriodicSchedule{IntervalSeconds: intervalSeconds}
+	}
+}
+
+func WithSchedule(schedule Schedule) CheckOption {
+	return func(c *Check) {
+		c.Schedule = schedule
+	}
 }
 
 // DueAt returns the time when check is due (could be past or future)
@@ -103,7 +153,7 @@ func (c *Check) makeNewIncidentIfJustified(result Result) *Incident {
 		return nil
 	}
 
-	i := makeIncidentFromResults(c.LastResult, result)
+	i := MakeIncidentFromResults(c.LastResult, result)
 	return &i
 }
 
@@ -126,7 +176,7 @@ type Command interface {
 	Run(Check) (Result, error)
 }
 
-// Handler mutates and/or processes a Check and it's latest result data
+// Handler mutates and/or processes a Check, and its latest result data
 // Process() does not mutate any data, only read.  newIncident is a pointer only because it can be nil.
 type Handler interface {
 	Mutate(check *Check, newResult *Result, newIncident *Incident)

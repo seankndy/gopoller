@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/seankndy/gopoller"
+	"github.com/seankndy/gopoller/check"
 	"net"
 	"time"
 )
@@ -32,7 +32,7 @@ type Command struct {
 	CritRespTimeThreshold time.Duration
 }
 
-func (c *Command) Run(check gopoller.Check) (gopoller.Result, error) {
+func (c *Command) Run(chk check.Check) (check.Result, error) {
 	r := &net.Resolver{
 		PreferGo: true,
 		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
@@ -73,24 +73,24 @@ func (c *Command) Run(check gopoller.Check) (gopoller.Result, error) {
 		var dnsErr *net.DNSError
 		if errors.As(err, &dnsErr) {
 			if dnsErr.Timeout() {
-				return *gopoller.NewResult(gopoller.StateCrit, "CONNECTION_TIMEOUT", nil), nil
+				return *check.NewResult(check.StateCrit, "CONNECTION_TIMEOUT", nil), nil
 			}
 		}
 
-		return *gopoller.NewResult(gopoller.StateUnknown, "CMD_FAILURE", nil), err
+		return *check.NewResult(check.StateUnknown, "CMD_FAILURE", nil), err
 	}
 
 	respTime := time.Now().Sub(startTime)
 	respMs := float64(respTime.Microseconds()) / float64(time.Microsecond)
 
-	resultMetrics := []gopoller.ResultMetric{
+	resultMetrics := []check.ResultMetric{
 		{
 			Label: "resp",
 			Value: fmt.Sprintf("%.3f", respMs),
-			Type:  gopoller.ResultMetricGauge,
+			Type:  check.ResultMetricGauge,
 		},
 	}
-	var resultState gopoller.ResultState
+	var resultState check.ResultState
 	var resultReasonCode string
 
 	expectedMatches := true
@@ -111,18 +111,18 @@ func (c *Command) Run(check gopoller.Check) (gopoller.Result, error) {
 	}
 
 	if !expectedMatches {
-		resultState = gopoller.StateCrit
+		resultState = check.StateCrit
 		resultReasonCode = "UNEXPECTED_RESP"
 	} else if respTime > c.CritRespTimeThreshold {
-		resultState = gopoller.StateCrit
+		resultState = check.StateCrit
 		resultReasonCode = "RESP_TIME_EXCEEDED"
 	} else if respTime > c.WarnRespTimeThreshold {
-		resultState = gopoller.StateWarn
+		resultState = check.StateWarn
 		resultReasonCode = "RESP_TIME_EXCEEDED"
 	} else {
-		resultState = gopoller.StateOk
+		resultState = check.StateOk
 		resultReasonCode = ""
 	}
 
-	return *gopoller.NewResult(resultState, resultReasonCode, resultMetrics), nil
+	return *check.NewResult(resultState, resultReasonCode, resultMetrics), nil
 }

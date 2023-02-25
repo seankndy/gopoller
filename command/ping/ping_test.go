@@ -2,7 +2,7 @@ package ping
 
 import (
 	"errors"
-	"github.com/seankndy/gopoller"
+	"github.com/seankndy/gopoller/check"
 	"github.com/stretchr/testify/mock"
 	"reflect"
 	"testing"
@@ -19,12 +19,12 @@ func TestResultMetricsReturnedProperly(t *testing.T) {
 
 	cmd := &Command{}
 	cmd.SetPinger(mockPinger)
-	result, err := cmd.Run(gopoller.Check{})
+	result, err := cmd.Run(check.Check{})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 
-	want := []gopoller.ResultMetric{
+	want := []check.ResultMetric{
 		{Label: "avg", Value: "23.45"},
 		{Label: "jitter", Value: "12.34"},
 		{Label: "loss", Value: "69.20"},
@@ -41,7 +41,7 @@ func TestThresholdsTripStatesProperly(t *testing.T) {
 		name            string
 		cmd             *Command
 		stats           *PingerStats
-		wantResultState gopoller.ResultState
+		wantResultState check.ResultState
 		wantReasonCode  string
 	}{
 		{
@@ -57,7 +57,7 @@ func TestThresholdsTripStatesProperly(t *testing.T) {
 				AvgRtt:     23450 * time.Microsecond,
 				StdDevRtt:  12340 * time.Microsecond,
 			},
-			wantResultState: gopoller.StateWarn,
+			wantResultState: check.StateWarn,
 			wantReasonCode:  "PKT_LOSS_HIGH",
 		},
 		{
@@ -73,7 +73,7 @@ func TestThresholdsTripStatesProperly(t *testing.T) {
 				AvgRtt:     23450 * time.Microsecond,
 				StdDevRtt:  12340 * time.Microsecond,
 			},
-			wantResultState: gopoller.StateCrit,
+			wantResultState: check.StateCrit,
 			wantReasonCode:  "PKT_LOSS_HIGH",
 		},
 		{
@@ -89,7 +89,7 @@ func TestThresholdsTripStatesProperly(t *testing.T) {
 				AvgRtt:     23450 * time.Microsecond,
 				StdDevRtt:  12340 * time.Microsecond,
 			},
-			wantResultState: gopoller.StateWarn,
+			wantResultState: check.StateWarn,
 			wantReasonCode:  "LATENCY_HIGH",
 		},
 		{
@@ -105,7 +105,7 @@ func TestThresholdsTripStatesProperly(t *testing.T) {
 				AvgRtt:     23450 * time.Microsecond,
 				StdDevRtt:  12340 * time.Microsecond,
 			},
-			wantResultState: gopoller.StateCrit,
+			wantResultState: check.StateCrit,
 			wantReasonCode:  "LATENCY_HIGH",
 		},
 		{
@@ -121,7 +121,7 @@ func TestThresholdsTripStatesProperly(t *testing.T) {
 				AvgRtt:     19 * time.Millisecond,
 				StdDevRtt:  5 * time.Millisecond,
 			},
-			wantResultState: gopoller.StateOk,
+			wantResultState: check.StateOk,
 			wantReasonCode:  "",
 		},
 	}
@@ -133,7 +133,7 @@ func TestThresholdsTripStatesProperly(t *testing.T) {
 
 			tt.cmd.SetPinger(mockPinger)
 
-			result, err := tt.cmd.Run(gopoller.Check{})
+			result, err := tt.cmd.Run(check.Check{})
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}
@@ -155,15 +155,15 @@ func TestReturnsUnknownResultAndErrOnPingerError(t *testing.T) {
 
 	cmd := &Command{}
 	cmd.SetPinger(mockPinger)
-	result, err := cmd.Run(gopoller.Check{})
+	result, err := cmd.Run(check.Check{})
 	if err == nil {
 		t.Error("expected error, got nil")
 	} else if err.Error() != "some error happened" {
 		t.Errorf("expected error with 'some error happened', got %v", err)
 	}
 
-	if result.State != gopoller.StateUnknown {
-		t.Errorf("wanted result state %v, got %v", gopoller.StateUnknown, result.State)
+	if result.State != check.StateUnknown {
+		t.Errorf("wanted result state %v, got %v", check.StateUnknown, result.State)
 	}
 	if result.ReasonCode != "CMD_FAILURE" {
 		t.Errorf("wanted result reason code CMD_FAILURE, got %v", result.ReasonCode)

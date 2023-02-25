@@ -1,4 +1,4 @@
-package gopoller
+package check
 
 import (
 	"testing"
