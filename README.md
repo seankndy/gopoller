@@ -51,7 +51,7 @@ func main() {
 			PacketLossCritThreshold: 95,
 			AvgRttWarnThreshold:     20,
 			AvgRttCritThreshold:     50,
-		})
+		}),
     ))
 
 	checkQueue.Enqueue(*check.NewCheck(
@@ -69,7 +69,7 @@ func main() {
 			PacketLossCritThreshold: 95,
 			AvgRttWarnThreshold:     20,
 			AvgRttCritThreshold:     50,
-		})
+		}),
 	))
 
 	// runs forever
