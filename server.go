@@ -7,9 +7,7 @@ import (
 )
 
 type Server struct {
-	ctx           context.Context
-	cancelContext func()
-	checkQueue    CheckQueue
+	checkQueue CheckQueue
 
 	// Should server re-enqueue checks back to the check queue after they finish running
 	AutoReEnqueue bool
@@ -27,19 +25,15 @@ type Server struct {
 	OnCheckFinished func(check Check, runDuration time.Duration)
 }
 
-func NewServer(ctx context.Context, checkQueue CheckQueue) *Server {
-	ctx, cancel := context.WithCancel(ctx)
-
+func NewServer(checkQueue CheckQueue) *Server {
 	return &Server{
-		ctx:              ctx,
-		cancelContext:    cancel,
 		checkQueue:       checkQueue,
 		MaxRunningChecks: 100,
 		AutoReEnqueue:    true,
 	}
 }
 
-func (s *Server) Run() {
+func (s *Server) Run(ctx context.Context) {
 	runningLimiter := make(chan struct{}, s.MaxRunningChecks)
 	defer close(runningLimiter)
 
@@ -57,7 +51,7 @@ func (s *Server) Run() {
 
 		for {
 			select {
-			case <-s.ctx.Done():
+			case <-ctx.Done():
 				return
 			default:
 			}
@@ -79,7 +73,7 @@ func (s *Server) Run() {
 loop:
 	for check := range pendingChecks {
 		select {
-		case <-s.ctx.Done():
+		case <-ctx.Done():
 			s.checkQueue.Enqueue(*check) // put the check back, we're shutting down
 			break loop
 		case runningLimiter <- struct{}{}:
@@ -118,8 +112,4 @@ loop:
 	for check := range pendingChecks {
 		s.checkQueue.Enqueue(*check)
 	}
-}
-
-func (s *Server) Stop() {
-	s.cancelContext()
 }

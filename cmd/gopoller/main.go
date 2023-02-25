@@ -18,8 +18,9 @@ import (
 )
 
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
 	checkQueue := gopoller.NewMemoryCheckQueue()
-	server := gopoller.NewServer(context.Background(), checkQueue)
+	server := gopoller.NewServer(checkQueue)
 	server.MaxRunningChecks = 2
 	server.AutoReEnqueue = true
 	server.OnCheckExecuting = func(check gopoller.Check) {
@@ -33,7 +34,7 @@ func main() {
 	}
 
 	// signal handler
-	handleSignals(server, checkQueue)
+	handleSignals(cancel)
 
 	tenSecondPeriodic := gopoller.PeriodicSchedule{IntervalSeconds: 10}
 
@@ -127,7 +128,7 @@ func main() {
 		LastResult: nil,
 	})
 
-	server.Run()
+	server.Run(ctx)
 
 	// flush the queue prior to shut down
 	checkQueue.Flush()
@@ -135,7 +136,7 @@ func main() {
 	fmt.Println("Exiting.")
 }
 
-func handleSignals(server *gopoller.Server, checkQueue gopoller.CheckQueue) {
+func handleSignals(cancel func()) {
 	go func() {
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGINT)
@@ -150,7 +151,7 @@ func handleSignals(server *gopoller.Server, checkQueue gopoller.CheckQueue) {
 			case sig := <-sigCh:
 				if sig == syscall.SIGINT {
 					fmt.Println("Stopping Server...")
-					server.Stop()
+					cancel()
 
 					return
 				}
