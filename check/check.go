@@ -80,7 +80,7 @@ func WithHandlers(handlers []Handler) Option {
 	}
 }
 
-func WithMeta(meta map[string]string) Option {
+func WithMeta(meta map[string]any) Option {
 	return func(c *Check) {
 		c.Meta = meta
 	}
@@ -214,7 +214,7 @@ type Command interface {
 // is called first and sequentially in the order defined in the Check.  This
 // allows the second mutation to see the first mutations, etc.  Process() is
 // called asynchronously and should never mutate data.
-type Handler interface
+type Handler interface {
 	// Mutate allows the handler to mutate any data in the Check, Result or
 	// Incident prior to Process()ing it.
 	Mutate(check *Check, newResult *Result, newIncident *Incident)
