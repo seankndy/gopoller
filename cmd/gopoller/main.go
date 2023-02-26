@@ -20,11 +20,24 @@ import (
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
+	// make ctrl+c stop the server
+	go func() {
+		sigCh := make(chan os.Signal)
+		signal.Notify(sigCh, syscall.SIGINT)
+
+		defer func() {
+			signal.Stop(sigCh)
+			close(sigCh)
+		}()
+
+		select {
+		case <-sigCh: // only notifying on syscall.SIGINT
+			fmt.Println("Stopping Server...")
+			cancel()
+		}
+	}()
 
 	checkQueue := check.NewMemoryQueue()
-
-	// signal handler
-	handleSignals(cancel)
 
 	lastCheck1 := time.Now().Add(-100 * time.Second)
 	check1 := check.New(
@@ -115,30 +128,6 @@ func main() {
 	checkQueue.Flush()
 
 	fmt.Println("Exiting.")
-}
-
-func handleSignals(cancel func()) {
-	go func() {
-		sigCh := make(chan os.Signal, 1)
-		signal.Notify(sigCh, syscall.SIGINT)
-
-		defer func() {
-			signal.Stop(sigCh)
-			close(sigCh)
-		}()
-
-		for {
-			select {
-			case sig := <-sigCh:
-				if sig == syscall.SIGINT {
-					fmt.Println("Stopping Server...")
-					cancel()
-
-					return
-				}
-			}
-		}
-	}()
 }
 
 // example getRrdFileDefs func:
