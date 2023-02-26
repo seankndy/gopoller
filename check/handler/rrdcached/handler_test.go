@@ -14,10 +14,10 @@ func TestDoesNotConnectToRrdCacheDWhenGetRrdFileDefsNil(t *testing.T) {
 	mockRrdClient := MockRrdClient{}
 	h := NewHandler(&mockRrdClient, nil)
 
-	check := check.Check{}
+	chk := check.Check{}
 	result := *check.NewResult(check.StateOk, "", nil)
 
-	h.Process(check, result, nil)
+	h.Process(chk, result, nil)
 
 	if mockRrdClient.ConnectCalled > 0 {
 		t.Error("Process() connected to rrdcached unexpectedly")
@@ -30,10 +30,10 @@ func TestDoesNotConnectToRrdCacheDWhenGetRrdFilesReturnsNil(t *testing.T) {
 		return nil
 	})
 
-	check := check.Check{}
+	chk := check.Check{}
 	result := *check.NewResult(check.StateOk, "", nil)
 
-	h.Process(check, result, nil)
+	h.Process(chk, result, nil)
 
 	if mockRrdClient.ConnectCalled > 0 {
 		t.Error("Process() connected to rrdcached unexpectedly")
@@ -48,10 +48,10 @@ func TestConnectsToRrdCacheDWhenGetRrdFilesReturnsData(t *testing.T) {
 		}
 	})
 
-	check := check.Check{}
+	chk := check.Check{}
 	result := *check.NewResult(check.StateOk, "", nil)
 
-	h.Process(check, result, nil)
+	h.Process(chk, result, nil)
 
 	if mockRrdClient.ConnectCalled == 0 {
 		t.Error("Process() did not connect to rrdcached when expected")
@@ -68,7 +68,7 @@ func TestOnlyCreatesRrdFilesThatDontExist(t *testing.T) {
 		}
 	})
 
-	check := check.Check{}
+	chk := check.Check{}
 	result := *check.NewResult(check.StateOk, "", nil)
 
 	// this will return a successful response for the file /foo1.rrd only
@@ -80,7 +80,7 @@ func TestOnlyCreatesRrdFilesThatDontExist(t *testing.T) {
 		return t, fmt.Errorf(file + ": No such file or directory")
 	}
 
-	h.Process(check, result, nil)
+	h.Process(chk, result, nil)
 
 	lastMock = nil
 
@@ -125,7 +125,7 @@ func TestIssuesCorrectBatchUpdateCommands(t *testing.T) {
 	})
 
 	tm := time.Unix(556549200, 0)
-	check := check.Check{}
+	chk := check.Check{}
 	result := check.Result{
 		State:      check.StateOk,
 		ReasonCode: "",
@@ -139,7 +139,7 @@ func TestIssuesCorrectBatchUpdateCommands(t *testing.T) {
 		Time: tm,
 	}
 
-	h.Process(check, result, nil)
+	h.Process(chk, result, nil)
 
 	if mockRrdClient.BatchCalled == 0 {
 		t.Error("Batch never called on RRD client")

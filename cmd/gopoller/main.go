@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 	"github.com/seankndy/gopoller/check"
-	"github.com/seankndy/gopoller/command/dns"
-	"github.com/seankndy/gopoller/command/junsubpool"
-	"github.com/seankndy/gopoller/command/ping"
-	"github.com/seankndy/gopoller/command/smtp"
-	"github.com/seankndy/gopoller/command/snmp"
-	dummy2 "github.com/seankndy/gopoller/handler/dummy"
-	"github.com/seankndy/gopoller/handler/rrdcached"
+	"github.com/seankndy/gopoller/check/command/dns"
+	"github.com/seankndy/gopoller/check/command/junsubpool"
+	"github.com/seankndy/gopoller/check/command/ping"
+	"github.com/seankndy/gopoller/check/command/smtp"
+	"github.com/seankndy/gopoller/check/command/snmp"
+	dummy2 "github.com/seankndy/gopoller/check/handler/dummy"
+	rrdcached2 "github.com/seankndy/gopoller/check/handler/rrdcached"
 	"github.com/seankndy/gopoller/server"
 	"os"
 	"os/signal"
@@ -142,7 +142,7 @@ func handleSignals(cancel func()) {
 }
 
 // example getRrdFileDefs func:
-func getRrdFileDefs(chk check.Check, result check.Result) []rrdcached.RrdFileDef {
+func getRrdFileDefs(chk check.Check, result check.Result) []rrdcached2.RrdFileDef {
 	_, isPeriodic := chk.Schedule.(check.PeriodicSchedule)
 	// no spec if no metrics or if the underlying check isn't on an interval schedule
 	if result.Metrics == nil || !isPeriodic {
@@ -151,38 +151,38 @@ func getRrdFileDefs(chk check.Check, result check.Result) []rrdcached.RrdFileDef
 
 	interval := chk.Schedule.(check.PeriodicSchedule).IntervalSeconds
 
-	var rrdFileDefs []rrdcached.RrdFileDef
+	var rrdFileDefs []rrdcached2.RrdFileDef
 	for _, metric := range result.Metrics {
-		var dst rrdcached.DST
+		var dst rrdcached2.DST
 		if metric.Type == check.ResultMetricCounter {
-			dst = rrdcached.Counter
+			dst = rrdcached2.Counter
 		} else {
-			dst = rrdcached.Gauge
+			dst = rrdcached2.Gauge
 		}
-		ds := rrdcached.NewDS(metric.Label, dst, interval*2, "U", "U")
+		ds := rrdcached2.NewDS(metric.Label, dst, interval*2, "U", "U")
 
 		weeklyAvg := 1800
 		monthlyAvg := 7200
 		yearlyAvg := 43200
 
-		rrdFileDefs = append(rrdFileDefs, rrdcached.RrdFileDef{
+		rrdFileDefs = append(rrdFileDefs, rrdcached2.RrdFileDef{
 			Filename:    "/Users/sean/rrd_test/" + chk.Id + "/" + ds.Name(),
-			DataSources: []rrdcached.DS{ds},
-			RoundRobinArchives: []rrdcached.RRA{
-				rrdcached.NewMinRRA(0.5, 1, 86400/interval),
-				rrdcached.NewMinRRA(0.5, weeklyAvg/interval, 86400*7/interval/(weeklyAvg/interval)),
-				rrdcached.NewMinRRA(0.5, monthlyAvg/interval, 86400*31/interval/(monthlyAvg/interval)),
-				rrdcached.NewMinRRA(0.5, yearlyAvg/interval, 86400*366/interval/(yearlyAvg/interval)),
+			DataSources: []rrdcached2.DS{ds},
+			RoundRobinArchives: []rrdcached2.RRA{
+				rrdcached2.NewMinRRA(0.5, 1, 86400/interval),
+				rrdcached2.NewMinRRA(0.5, weeklyAvg/interval, 86400*7/interval/(weeklyAvg/interval)),
+				rrdcached2.NewMinRRA(0.5, monthlyAvg/interval, 86400*31/interval/(monthlyAvg/interval)),
+				rrdcached2.NewMinRRA(0.5, yearlyAvg/interval, 86400*366/interval/(yearlyAvg/interval)),
 
-				rrdcached.NewAverageRRA(0.5, 1, 86400/interval),
-				rrdcached.NewAverageRRA(0.5, weeklyAvg/interval, 86400*7/interval/(weeklyAvg/interval)),
-				rrdcached.NewAverageRRA(0.5, monthlyAvg/interval, 86400*31/interval/(monthlyAvg/interval)),
-				rrdcached.NewAverageRRA(0.5, yearlyAvg/interval, 86400*366/interval/(yearlyAvg/interval)),
+				rrdcached2.NewAverageRRA(0.5, 1, 86400/interval),
+				rrdcached2.NewAverageRRA(0.5, weeklyAvg/interval, 86400*7/interval/(weeklyAvg/interval)),
+				rrdcached2.NewAverageRRA(0.5, monthlyAvg/interval, 86400*31/interval/(monthlyAvg/interval)),
+				rrdcached2.NewAverageRRA(0.5, yearlyAvg/interval, 86400*366/interval/(yearlyAvg/interval)),
 
-				rrdcached.NewMaxRRA(0.5, 1, 86400/interval),
-				rrdcached.NewMaxRRA(0.5, weeklyAvg/interval, 86400*7/interval/(weeklyAvg/interval)),
-				rrdcached.NewMaxRRA(0.5, monthlyAvg/interval, 86400*31/interval/(monthlyAvg/interval)),
-				rrdcached.NewMaxRRA(0.5, yearlyAvg/interval, 86400*366/interval/(yearlyAvg/interval)),
+				rrdcached2.NewMaxRRA(0.5, 1, 86400/interval),
+				rrdcached2.NewMaxRRA(0.5, weeklyAvg/interval, 86400*7/interval/(weeklyAvg/interval)),
+				rrdcached2.NewMaxRRA(0.5, monthlyAvg/interval, 86400*31/interval/(monthlyAvg/interval)),
+				rrdcached2.NewMaxRRA(0.5, yearlyAvg/interval, 86400*366/interval/(yearlyAvg/interval)),
 			},
 			Step: time.Duration(interval) * time.Second,
 		})
