@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// Incident defines a Check that has undergone a non-OK state change.
 type Incident struct {
 	Id           uuid.UUID
 	FromState    ResultState
@@ -15,16 +16,20 @@ type Incident struct {
 	Acknowledged *time.Time
 }
 
+// Resolve sets the Incident to resolved at the current time.
 func (i *Incident) Resolve() {
 	t := time.Now()
 	i.Resolved = &t
 }
 
+// Acknowledge sets the Incident to acknowledged at the current time.
 func (i *Incident) Acknowledge() {
 	t := time.Now()
 	i.Acknowledged = &t
 }
 
+// MakeIncidentFromResults creates a new Incident based on a Check last Result,
+// and it's current Result.
 func MakeIncidentFromResults(lastResult *Result, currentResult Result) Incident {
 	if lastResult == nil {
 		lastResult = MakeUnknownResult("")

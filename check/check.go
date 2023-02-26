@@ -6,26 +6,56 @@ import (
 	"time"
 )
 
+// Check defines a service or a host to be checked with a given Command and at
+// a given Schedule.
 type Check struct {
-	// Id should be any unique value for this check
+	// Id should be any unique value for this check.
 	Id string
 
 	// Schedule determines when this Check is due to be executed.
 	Schedule Schedule
-	Command  Command
-	Meta     map[string]string
 
-	Incident          *Incident
+	// Command is the command this check runs against the service or host.
+	// Examples are snmp, ping, dns, or http commands
+	Command Command
+
+	// Meta is a key/value store of any extra data you want to live with the
+	// check.
+	Meta map[string]any
+
+	// Incident needs to be the current active incident for this check
+	// or else nil.
+	Incident *Incident
+
+	// SuppressIncidents set to true means when this Check executes and
+	// produces an Incident, it discards it.
 	SuppressIncidents bool
 
+	// Handlers is a slice of handlers to execute after the Check's Command runs.
+	// A Handler has a Mutate() and Process() method for mutating a Check's data
+	// and processing it, respectfully.  Mutate() methods are called first in
+	// sequential order as specified in this slice.  Then Process() methods are
+	// called asynchronously.
 	Handlers []Handler
 
-	LastCheck  *time.Time
+	// LastCheck is a time.Time of the last time this Check executed. This will
+	// be updated automatically by Execute(), but be sure it's set to the
+	// correct time when loading a check from an external database.
+	LastCheck *time.Time
+
+	// LastResult is a Result from the last time this Check executed (or nil).
+	// This will be updated automatically by Execute(), but be sure it's set to
+	// the correct Result when loading a check from an external database.
+	//
+	// LastResult could be used by the Command to determine value deltas.  If
+	// you are certain this is not required in your case, then this could always
+	// be nil.
 	LastResult *Result
 }
 
 type Option func(*Check)
 
+// New creates a new Check with the provided Options.
 func New(id string, options ...Option) *Check {
 	check := &Check{
 		Id: id,
@@ -84,6 +114,8 @@ func (c *Check) IsDue() bool {
 	return c.DueAt().Compare(time.Now()) <= 0
 }
 
+// Execute executes a Check's Command followed by its Handlers.  It then sets
+// the Incident (if there is one), LastCheck and LastResult fields on the Check.
 func (c *Check) Execute() error {
 	result, err := c.Command.Run(*c)
 
@@ -172,13 +204,23 @@ func (c *Check) resolveOrDiscardPreviousIncident(newResult Result, newIncident *
 	}
 }
 
+// Command is a simple interface with a Run(Check) method that returns a Result
+// and error.
 type Command interface {
 	Run(Check) (Result, error)
 }
 
-// Handler mutates and/or processes a Check, and its latest result data
-// Process() does not mutate any data, only read.  newIncident is a pointer only because it can be nil.
-type Handler interface {
+// Handler mutates and/or processes a Check after it has executed.  Mutate()
+// is called first and sequentially in the order defined in the Check.  This
+// allows the second mutation to see the first mutations, etc.  Process() is
+// called asynchronously and should never mutate data.
+type Handler interface
+	// Mutate allows the handler to mutate any data in the Check, Result or
+	// Incident prior to Process()ing it.
 	Mutate(check *Check, newResult *Result, newIncident *Incident)
+
+	// Process executes asynchronously and should never mutate data. newIncident
+	// is a pointer as it may be nil indicating there isn't a new incident for
+	// the Check.
 	Process(check Check, newResult Result, newIncident *Incident) error
 }

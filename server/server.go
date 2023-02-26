@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// Server loops forever, reading Checks from a check.Queue and executing them.
 type Server struct {
 	checkQueue check.Queue
 
@@ -54,6 +55,8 @@ func WithMaxRunningChecks(n int) Option {
 	}
 }
 
+// Run starts the server.  ctx is a context.Context that when cancelled will
+// stop the server after the currently executing checks finish.
 func (s *Server) Run(ctx context.Context) {
 	runningLimiter := make(chan struct{}, s.MaxRunningChecks)
 	defer close(runningLimiter)
