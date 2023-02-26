@@ -24,9 +24,9 @@ type Check struct {
 	LastResult *Result
 }
 
-type CheckOption func(*Check)
+type Option func(*Check)
 
-func NewCheck(id string, options ...CheckOption) *Check {
+func New(id string, options ...Option) *Check {
 	check := &Check{
 		Id: id,
 	}
@@ -38,37 +38,37 @@ func NewCheck(id string, options ...CheckOption) *Check {
 	return check
 }
 
-func WithCommand(cmd Command) CheckOption {
+func WithCommand(cmd Command) Option {
 	return func(c *Check) {
 		c.Command = cmd
 	}
 }
 
-func WithHandlers(handlers []Handler) CheckOption {
+func WithHandlers(handlers []Handler) Option {
 	return func(c *Check) {
 		c.Handlers = handlers
 	}
 }
 
-func WithMeta(meta map[string]string) CheckOption {
+func WithMeta(meta map[string]string) Option {
 	return func(c *Check) {
 		c.Meta = meta
 	}
 }
 
-func WithSuppressedIncidents() CheckOption {
+func WithSuppressedIncidents() Option {
 	return func(c *Check) {
 		c.SuppressIncidents = true
 	}
 }
 
-func WithPeriodicSchedule(intervalSeconds int) CheckOption {
+func WithPeriodicSchedule(intervalSeconds int) Option {
 	return func(c *Check) {
 		c.Schedule = &PeriodicSchedule{IntervalSeconds: intervalSeconds}
 	}
 }
 
-func WithSchedule(schedule Schedule) CheckOption {
+func WithSchedule(schedule Schedule) Option {
 	return func(c *Check) {
 		c.Schedule = schedule
 	}

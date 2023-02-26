@@ -1,4 +1,4 @@
-package gopoller
+package server
 
 import (
 	"context"
@@ -14,7 +14,7 @@ type Server struct {
 	AutoReEnqueue bool
 
 	// The maximum number of concurrently executing checks
-	MaxRunningChecks uint64
+	MaxRunningChecks int
 
 	// Callback triggerred just prior to check execution (useful for logging)
 	OnCheckExecuting func(check check.Check)
@@ -26,11 +26,31 @@ type Server struct {
 	OnCheckFinished func(check check.Check, runDuration time.Duration)
 }
 
-func NewServer(checkQueue check.Queue) *Server {
-	return &Server{
+type Option func(*Server)
+
+func New(checkQueue check.Queue, options ...Option) *Server {
+	server := &Server{
 		checkQueue:       checkQueue,
 		MaxRunningChecks: 100,
 		AutoReEnqueue:    true,
+	}
+
+	for _, option := range options {
+		option(server)
+	}
+
+	return server
+}
+
+func WithoutAutoReEnqueue() Option {
+	return func(s *Server) {
+		s.AutoReEnqueue = false
+	}
+}
+
+func WithMaxRunningChecks(n int) Option {
+	return func(s *Server) {
+		s.MaxRunningChecks = n
 	}
 }
 

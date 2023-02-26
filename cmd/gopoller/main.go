@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/seankndy/gopoller"
 	"github.com/seankndy/gopoller/check"
 	"github.com/seankndy/gopoller/command/dns"
 	"github.com/seankndy/gopoller/command/junsubpool"
@@ -12,6 +11,7 @@ import (
 	"github.com/seankndy/gopoller/command/snmp"
 	dummy2 "github.com/seankndy/gopoller/handler/dummy"
 	"github.com/seankndy/gopoller/handler/rrdcached"
+	"github.com/seankndy/gopoller/server"
 	"os"
 	"os/signal"
 	"syscall"
@@ -20,25 +20,14 @@ import (
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
+
 	checkQueue := check.NewMemoryCheckQueue()
-	server := gopoller.NewServer(checkQueue)
-	server.MaxRunningChecks = 2
-	server.AutoReEnqueue = true
-	server.OnCheckExecuting = func(chk check.Check) {
-		//fmt.Printf("Check beginning execution: %v\n", check)
-	}
-	server.OnCheckErrored = func(chk check.Check, err error) {
-		fmt.Printf("CHECK ERROR: %v", err)
-	}
-	server.OnCheckFinished = func(chk check.Check, runDuration time.Duration) {
-		fmt.Printf("Check finished execution: %v (%.3f seconds)\n", chk, runDuration.Seconds())
-	}
 
 	// signal handler
 	handleSignals(cancel)
 
 	lastCheck1 := time.Now().Add(-100 * time.Second)
-	check1 := check.NewCheck(
+	check1 := check.New(
 		"check1",
 		check.WithCommand(&ping.Command{
 			Addr:                    "209.193.82.100",
@@ -57,7 +46,7 @@ func main() {
 	checkQueue.Enqueue(*check1)
 
 	lastCheck2 := time.Now().Add(-90 * time.Second)
-	check2 := check.NewCheck(
+	check2 := check.New(
 		"check2",
 		check.WithCommand(snmp.NewCommand("209.193.82.100", "public", []snmp.OidMonitor{
 			*snmp.NewOidMonitor(".1.3.6.1.2.1.2.2.1.7.554", "ifAdminStatus"),
@@ -68,7 +57,7 @@ func main() {
 	check2.LastCheck = &lastCheck2
 	checkQueue.Enqueue(*check2)
 
-	check3 := check.NewCheck(
+	check3 := check.New(
 		"check3",
 		check.WithCommand(&dns.Command{
 			ServerIp:              "209.193.72.2",
@@ -85,7 +74,7 @@ func main() {
 	)
 	checkQueue.Enqueue(*check3)
 
-	check4 := check.NewCheck(
+	check4 := check.New(
 		"check4",
 		check.WithCommand(&smtp.Command{
 			Addr:                  "smtp.vcn.com",
@@ -101,7 +90,7 @@ func main() {
 	)
 	checkQueue.Enqueue(*check4)
 
-	check5 := check.NewCheck(
+	check5 := check.New(
 		"check5",
 		check.WithCommand(junsubpool.NewCommand("209.193.82.44", "public", []int{1000002, 1000003, 1000004, 1000005, 1000006, 1000007, 1000008, 1000012, 1000015, 1000017, 1000019}, 95, 99)),
 		check.WithPeriodicSchedule(10),
@@ -109,8 +98,18 @@ func main() {
 	)
 	checkQueue.Enqueue(*check5)
 
-	// run the server
-	server.Run(ctx)
+	// create and run the server
+	svr := server.New(checkQueue, server.WithMaxRunningChecks(2))
+	svr.OnCheckExecuting = func(chk check.Check) {
+		//fmt.Printf("Check beginning execution: %v\n", check)
+	}
+	svr.OnCheckErrored = func(chk check.Check, err error) {
+		fmt.Printf("CHECK ERROR: %v", err)
+	}
+	svr.OnCheckFinished = func(chk check.Check, runDuration time.Duration) {
+		fmt.Printf("Check finished execution: %v (%.3f seconds)\n", chk, runDuration.Seconds())
+	}
+	svr.Run(ctx)
 
 	// flush the queue prior to shut down
 	checkQueue.Flush()
