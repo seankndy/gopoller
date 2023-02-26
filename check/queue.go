@@ -5,6 +5,7 @@ import (
 	"sync"
 )
 
+// Queue is used by a server.Server to feed it work (Checks to execute).
 type Queue interface {
 	Enqueue(check Check)
 	Dequeue() *Check
@@ -12,7 +13,10 @@ type Queue interface {
 	Count() uint64
 }
 
-type MemoryCheckQueue struct {
+// MemoryQueue is a min priority queue that stores its checks in a map.
+// Priorities are derived from the Check's DueAt() timestamp so that the
+// checks with the oldest timestamps come out first.
+type MemoryQueue struct {
 	checks      map[int64][]Check
 	total       uint64
 	priorities  map[int64]int64
@@ -20,15 +24,15 @@ type MemoryCheckQueue struct {
 	sync.RWMutex
 }
 
-func NewMemoryCheckQueue() *MemoryCheckQueue {
-	return &MemoryCheckQueue{
+func NewMemoryQueue() *MemoryQueue {
+	return &MemoryQueue{
 		checks:      make(map[int64][]Check),
 		priorities:  make(map[int64]int64),
 		minPriority: math.MaxInt64,
 	}
 }
 
-func (m *MemoryCheckQueue) Enqueue(check Check) {
+func (m *MemoryQueue) Enqueue(check Check) {
 	priority := check.DueAt().Unix()
 
 	m.Lock()
@@ -44,7 +48,7 @@ func (m *MemoryCheckQueue) Enqueue(check Check) {
 	}
 }
 
-func (m *MemoryCheckQueue) Dequeue() *Check {
+func (m *MemoryQueue) Dequeue() *Check {
 	m.Lock()
 	defer m.Unlock()
 
@@ -80,7 +84,7 @@ func (m *MemoryCheckQueue) Dequeue() *Check {
 	return &check
 }
 
-func (m *MemoryCheckQueue) Flush() {
+func (m *MemoryQueue) Flush() {
 	m.Lock()
 	defer m.Unlock()
 
@@ -90,7 +94,7 @@ func (m *MemoryCheckQueue) Flush() {
 	m.total = 0
 }
 
-func (m *MemoryCheckQueue) Count() uint64 {
+func (m *MemoryQueue) Count() uint64 {
 	m.RLock()
 	defer m.RUnlock()
 

@@ -6,7 +6,7 @@ import (
 )
 
 func TestMemoryCheckQueueEnqueuesAndDequeues(t *testing.T) {
-	q := NewMemoryCheckQueue()
+	q := NewMemoryQueue()
 
 	sixtySecAgo := time.Now().Add(-(60 * time.Second))
 	ninetySecAgo := time.Now().Add(-(90 * time.Second))

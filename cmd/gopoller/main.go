@@ -21,7 +21,7 @@ import (
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	checkQueue := check.NewMemoryCheckQueue()
+	checkQueue := check.NewMemoryQueue()
 
 	// signal handler
 	handleSignals(cancel)

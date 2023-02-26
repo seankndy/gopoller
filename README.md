@@ -18,12 +18,12 @@ import (
 
 func main() {
 	// this is where you will store all the checks you want to periodically execute
-	// you could write your own check queue as well (just implement the CheckQueue interface)
-	checkQueue := check.NewMemoryCheckQueue()
+	// you could write your own check queue as well (just implement the check.Queue interface)
+	checkQueue := check.NewMemoryQueue()
 	
 	// queue up a ping couple checks.  these checks would normally come from your own database
 	// and be populated programmatically
-	checkQueue.Enqueue(*check.NewCheck(
+	checkQueue.Enqueue(*check.New(
 		"check1",
 		check.WithPeriodicSchedule(10),
 		check.WithHandlers([]gopoller.Handler{
@@ -41,7 +41,7 @@ func main() {
 		}),
 	))
 
-	checkQueue.Enqueue(*check.NewCheck(
+	checkQueue.Enqueue(*check.New(
 		"check2",
 		check.WithPeriodicSchedule(10),
 		check.WithHandlers([]gopoller.Handler{
