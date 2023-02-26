@@ -9,25 +9,17 @@ package main
 import (
 	"context"
 	"fmt"
+	"time"
 	"github.com/seankndy/gopoller/server"
 	"github.com/seankndy/gopoller/check"
-	"github.com/seankndy/gopoller/command/ping"
-	"github.com/seankndy/gopoller/handler/dummy"
+	"github.com/seankndy/gopoller/check/command/ping"
+	"github.com/seankndy/gopoller/check/handler/dummy"
 )
 
 func main() {
 	// this is where you will store all the checks you want to periodically execute
 	// you could write your own check queue as well (just implement the CheckQueue interface)
 	checkQueue := check.NewMemoryCheckQueue()
-	// creates the server with max running checks of 3
-	svr := server.New(checkQueue, server.WithMaxRunningChecks(3))
-	// here we have a couple callbacks to do some rudimentary logging when check start and finish
-	svr.OnCheckExecuting = func(chk gopoller.Check) {
-		fmt.Printf("Check beginning execution: %v\n", chk)
-	}
-	svr.OnCheckFinished = func(chk gopoller.Check, runDuration time.Duration) {
-		fmt.Printf("Check finished execution: %v (%.3f seconds)\n", chk, runDuration.Seconds())
-	}
 	
 	// queue up a ping couple checks.  these checks would normally come from your own database
 	// and be populated programmatically
@@ -67,6 +59,15 @@ func main() {
 		}),
 	))
 
+	// creates the server with max running checks of 3
+	svr := server.New(checkQueue, server.WithMaxRunningChecks(3))
+	// here we have a couple callbacks to do some rudimentary logging when check start and finish
+	svr.OnCheckExecuting = func(chk check.Check) {
+		fmt.Printf("Check beginning execution: %v\n", chk)
+	}
+	svr.OnCheckFinished = func(chk check.Check, runDuration time.Duration) {
+		fmt.Printf("Check finished execution: %v (%.3f seconds)\n", chk, runDuration.Seconds())
+	}
 	// runs forever
 	svr.Run(context.Background())
 }
