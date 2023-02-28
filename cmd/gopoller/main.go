@@ -91,9 +91,9 @@ func main() {
 	check4 := check.New(
 		"check4",
 		check.WithCommand(&smtp.Command{
-			Addr:                  "hfmx.vcn.com",
+			Addr:                  "smtp.vcn.com",
 			Port:                  25,
-			Timeout:               5 * time.Second,
+			Timeout:               3 * time.Second,
 			WarnRespTimeThreshold: 25 * time.Millisecond,
 			CritRespTimeThreshold: 50 * time.Millisecond,
 			Send:                  "HELO gopoller.local",
