@@ -15,28 +15,12 @@ import (
 	"github.com/seankndy/gopoller/server"
 	"os"
 	"os/signal"
-	"syscall"
 	"time"
 )
 
 func main() {
-	ctx, cancel := context.WithCancel(context.Background())
-	// make ctrl+c stop the server
-	go func() {
-		sigCh := make(chan os.Signal)
-		signal.Notify(sigCh, syscall.SIGINT)
-
-		defer func() {
-			signal.Stop(sigCh)
-			close(sigCh)
-		}()
-
-		select {
-		case <-sigCh: // only notifying on syscall.SIGINT
-			fmt.Println("Stopping Server...")
-			cancel()
-		}
-	}()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
 
 	checkQueue := check.NewMemoryQueue()
 

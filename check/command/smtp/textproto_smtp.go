@@ -17,7 +17,10 @@ func (t *TextProtoSmtp) Connect(c *Command) error {
 	if err != nil {
 		return err
 	}
-	conn.SetDeadline(time.Now().Add(c.Timeout))
+	err = conn.SetDeadline(time.Now().Add(c.Timeout))
+	if err != nil {
+		return err
+	}
 
 	t.text = textproto.NewConn(conn)
 	_, _, err = t.text.ReadResponse(220)

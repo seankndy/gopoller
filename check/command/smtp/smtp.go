@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/seankndy/gopoller/check"
+	"os"
 	"time"
 )
 
@@ -74,6 +75,9 @@ func (c *Command) Run(check.Check) (result check.Result, err error) {
 
 	actualResponseCode, respTime, err := client.Cmd(c.Send)
 	if err != nil {
+		if errors.Is(err, os.ErrDeadlineExceeded) {
+			return *check.NewResult(check.StateCrit, "CONNECTION_ERROR", nil), err
+		}
 		return *check.MakeUnknownResult("CMD_FAILURE"), err
 	}
 	respMs := float64(respTime.Microseconds()) / float64(time.Microsecond)

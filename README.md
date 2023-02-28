@@ -9,14 +9,20 @@ package main
 import (
 	"context"
 	"fmt"
-	"time"
 	"github.com/seankndy/gopoller/server"
 	"github.com/seankndy/gopoller/check"
 	"github.com/seankndy/gopoller/check/command/ping"
 	"github.com/seankndy/gopoller/check/handler/dummy"
+	"os"
+	"os/signal"
+	"time"
 )
 
 func main() {
+	// create new context that cancels with sigint signal (ctrl+c)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	
 	// this is where you will store all the checks you want to periodically execute
 	// you could write your own check queue as well (just implement the check.Queue interface)
 	checkQueue := check.NewMemoryQueue()
@@ -26,11 +32,9 @@ func main() {
 	checkQueue.Enqueue(*check.New(
 		"check1",
 		check.WithPeriodicSchedule(10),
-		check.WithHandlers([]gopoller.Handler{
-			handler.DummyHandler{},
-		}),
+		check.WithHandlers([]check.Handler{dummy.Handler{}}),
 		check.WithCommand(&ping.Command{
-			Ip:                      "8.8.8.8",
+			Addr:                    "8.8.8.8",
 			Count:                   5,
 			Interval:                100 * time.Millisecond,
 			Size:                    64,
@@ -44,11 +48,9 @@ func main() {
 	checkQueue.Enqueue(*check.New(
 		"check2",
 		check.WithPeriodicSchedule(10),
-		check.WithHandlers([]gopoller.Handler{
-			handler.DummyHandler{},
-		}),
+		check.WithHandlers([]check.Handler{dummy.Handler{}}),
 		check.WithCommand(&ping.Command{
-			Ip:                      "1.1.1.1",
+			Addr:                      "1.1.1.1",
 			Count:                   5,
 			Interval:                100 * time.Millisecond,
 			Size:                    64,
@@ -69,7 +71,7 @@ func main() {
 		fmt.Printf("Check finished execution: %v (%.3f seconds)\n", chk, runDuration.Seconds())
 	}
 	// runs forever
-	svr.Run(context.Background())
+	svr.Run(ctx)
 }
 ```
 Check commands return Results with states of either Unknown, Ok, Warn or Crit.  If a check moves from being ok to non-ok or from being non-ok to some other non-ok, then a new Incident is generated for that Check.  This Incident (or nil) along with the Check and Result are passed to the handlers for mutation and processing.
