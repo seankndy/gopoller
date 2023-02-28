@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/seankndy/gopoller/check"
 	"github.com/seankndy/gopoller/check/command/dns"
+	"github.com/seankndy/gopoller/check/command/http"
 	"github.com/seankndy/gopoller/check/command/junsubpool"
 	"github.com/seankndy/gopoller/check/command/ping"
 	"github.com/seankndy/gopoller/check/command/smtp"
@@ -90,7 +91,7 @@ func main() {
 	check4 := check.New(
 		"check4",
 		check.WithCommand(&smtp.Command{
-			Addr:                  "smtp.vcn.com",
+			Addr:                  "hfmx.vcn.com",
 			Port:                  25,
 			Timeout:               5 * time.Second,
 			WarnRespTimeThreshold: 25 * time.Millisecond,
@@ -110,6 +111,22 @@ func main() {
 		check.WithHandlers([]check.Handler{dummy.Handler{}}),
 	)
 	checkQueue.Enqueue(*check5)
+
+	check6 := check.New(
+		"check6",
+		check.WithCommand(&http.Command{
+			ReqUrl:                "https://www.google.com",
+			ReqMethod:             "GET",
+			ReqTimeout:            1000 * time.Millisecond,
+			SkipSslVerify:         false,
+			ExpectedResponseCode:  200,
+			WarnRespTimeThreshold: 250 * time.Millisecond,
+			CritRespTimeThreshold: 500 * time.Millisecond,
+		}),
+		check.WithPeriodicSchedule(10),
+		check.WithHandlers([]check.Handler{dummy.Handler{}}),
+	)
+	checkQueue.Enqueue(*check6)
 
 	// create and run the server
 	svr := server.New(checkQueue, server.WithMaxRunningChecks(2))
