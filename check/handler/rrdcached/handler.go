@@ -23,11 +23,11 @@ func NewHandler(client Client, getRrdFileDefs func(check.Check, check.Result) []
 	}
 }
 
-func (h Handler) Mutate(check *check.Check, result *check.Result, newIncident *check.Incident) {
+func (h *Handler) Mutate(check *check.Check, result *check.Result, newIncident *check.Incident) {
 	return
 }
 
-func (h Handler) Process(check check.Check, result check.Result, newIncident *check.Incident) (err error) {
+func (h *Handler) Process(check check.Check, result check.Result, newIncident *check.Incident) (err error) {
 	getRrdFileDefs := h.GetRrdFileDefs
 	if getRrdFileDefs == nil {
 		return

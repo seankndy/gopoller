@@ -38,7 +38,7 @@ func main() {
 			AvgRttCritThreshold:     50 * time.Millisecond,
 		}),
 		check.WithPeriodicSchedule(10),
-		check.WithHandlers([]check.Handler{dummy.Handler{}}),
+		check.WithHandlers([]check.Handler{&dummy.Handler{}}),
 	)
 	check1.LastCheck = &lastCheck1
 	checkQueue.Enqueue(*check1)
@@ -50,7 +50,7 @@ func main() {
 			*snmp.NewOidMonitor(".1.3.6.1.2.1.2.2.1.7.554", "ifAdminStatus"),
 		})),
 		check.WithPeriodicSchedule(10),
-		check.WithHandlers([]check.Handler{dummy.Handler{}}),
+		check.WithHandlers([]check.Handler{&dummy.Handler{}}),
 	)
 	check2.LastCheck = &lastCheck2
 	checkQueue.Enqueue(*check2)
@@ -68,7 +68,7 @@ func main() {
 			CritRespTimeThreshold: 40 * time.Millisecond,
 		}),
 		check.WithPeriodicSchedule(10),
-		check.WithHandlers([]check.Handler{dummy.Handler{}}),
+		check.WithHandlers([]check.Handler{&dummy.Handler{}}),
 	)
 	checkQueue.Enqueue(*check3)
 
@@ -84,7 +84,7 @@ func main() {
 			ExpectedResponseCode:  250,
 		}),
 		check.WithPeriodicSchedule(10),
-		check.WithHandlers([]check.Handler{dummy.Handler{}}),
+		check.WithHandlers([]check.Handler{&dummy.Handler{}}),
 	)
 	checkQueue.Enqueue(*check4)
 
@@ -92,7 +92,7 @@ func main() {
 		"check5",
 		check.WithCommand(junsubpool.NewCommand("209.193.82.44", "public", []int{1000002, 1000003, 1000004, 1000005, 1000006, 1000007, 1000008, 1000012, 1000015, 1000017, 1000019}, 95, 99)),
 		check.WithPeriodicSchedule(10),
-		check.WithHandlers([]check.Handler{dummy.Handler{}}),
+		check.WithHandlers([]check.Handler{&dummy.Handler{}}),
 	)
 	checkQueue.Enqueue(*check5)
 
@@ -108,7 +108,7 @@ func main() {
 			CritRespTimeThreshold: 500 * time.Millisecond,
 		}),
 		check.WithPeriodicSchedule(10),
-		check.WithHandlers([]check.Handler{dummy.Handler{}}),
+		check.WithHandlers([]check.Handler{&dummy.Handler{}}),
 	)
 	checkQueue.Enqueue(*check6)
 
