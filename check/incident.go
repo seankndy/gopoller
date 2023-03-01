@@ -28,6 +28,16 @@ func (i *Incident) Acknowledge() {
 	i.Acknowledged = &t
 }
 
+// IsAcknowledged returns true if incident has been acknowledged.
+func (i *Incident) IsAcknowledged() bool {
+	return i.Acknowledged != nil
+}
+
+// IsResolved returns true if incident has been resolved.
+func (i *Incident) IsResolved() bool {
+	return i.Resolved != nil
+}
+
 // MakeIncidentFromResults creates a new Incident based on a Check last Result,
 // and it's current Result.
 func MakeIncidentFromResults(lastResult *Result, currentResult Result) Incident {
