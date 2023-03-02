@@ -33,6 +33,8 @@ type Command struct {
 	PacketLossCritThreshold float64
 	AvgRttWarnThreshold     time.Duration
 	AvgRttCritThreshold     time.Duration
+	StdDevRttWarnThreshold  time.Duration
+	StdDevRttCritThreshold  time.Duration
 }
 
 func (c *Command) SetPinger(pinger Pinger) {
@@ -68,12 +70,18 @@ func (c *Command) Run(check.Check) (check.Result, error) {
 	} else if lossPerc > c.PacketLossWarnThreshold {
 		state = check.StateWarn
 		reasonCode = "PKT_LOSS_HIGH"
-	} else if stats.AvgRtt > c.AvgRttCritThreshold {
+	} else if c.AvgRttCritThreshold > 0 && stats.AvgRtt > c.AvgRttCritThreshold {
 		state = check.StateCrit
 		reasonCode = "LATENCY_HIGH"
-	} else if stats.AvgRtt > c.AvgRttWarnThreshold {
+	} else if c.AvgRttWarnThreshold > 0 && stats.AvgRtt > c.AvgRttWarnThreshold {
 		state = check.StateWarn
 		reasonCode = "LATENCY_HIGH"
+	} else if c.StdDevRttCritThreshold > 0 && stats.StdDevRtt > c.StdDevRttCritThreshold {
+		state = check.StateCrit
+		reasonCode = "JITTER_HIGH"
+	} else if c.StdDevRttWarnThreshold > 0 && stats.StdDevRtt > c.StdDevRttWarnThreshold {
+		state = check.StateWarn
+		reasonCode = "JITTER_HIGH"
 	} else {
 		state = check.StateOk
 	}
