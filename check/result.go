@@ -27,6 +27,19 @@ func (s ResultState) String() string {
 	}
 }
 
+func NewResultStateFromString(state string) ResultState {
+	switch state {
+	case "OK":
+		return StateOk
+	case "WARN":
+		return StateWarn
+	case "CRIT":
+		return StateCrit
+	default:
+		return StateUnknown
+	}
+}
+
 // Result contains the state, reason, metrics and time of a check.Command.
 type Result struct {
 	State      ResultState
