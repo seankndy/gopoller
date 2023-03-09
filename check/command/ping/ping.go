@@ -28,6 +28,7 @@ type Command struct {
 	Count    int
 	Interval time.Duration
 	Size     int
+	UseIcmp  bool
 
 	PacketLossWarnThreshold float64
 	PacketLossCritThreshold float64

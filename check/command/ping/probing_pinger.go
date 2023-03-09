@@ -15,7 +15,9 @@ func (p *ProBingPinger) Run(cmd *Command) (*PingerStats, error) {
 	pinger.Interval = cmd.Interval
 	pinger.Count = cmd.Count
 	pinger.Size = cmd.Size
-	pinger.SetPrivileged(true)
+	if cmd.UseIcmp {
+		pinger.SetPrivileged(true)
+	}
 
 	err = pinger.Run()
 	if err != nil {
