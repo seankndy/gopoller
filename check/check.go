@@ -1,6 +1,7 @@
 package check
 
 import (
+	"errors"
 	"github.com/hashicorp/go-multierror"
 	"sync"
 	"time"
@@ -117,6 +118,10 @@ func (c *Check) IsDue() bool {
 // Execute executes a Check's Command followed by its Handlers.  It then sets
 // the Incident (if there is one), LastCheck and LastResult fields on the Check.
 func (c *Check) Execute() error {
+	if c.Command == nil {
+		return errors.New("no command to execute")
+	}
+
 	result, err := c.Command.Run(*c)
 
 	newIncident := c.makeNewIncidentIfJustified(result)
