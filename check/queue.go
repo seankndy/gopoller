@@ -100,3 +100,18 @@ func (m *MemoryQueue) Count() uint64 {
 
 	return m.total
 }
+
+// All returns every check in the queue.
+func (m *MemoryQueue) All() []*Check {
+	m.RLock()
+	defer m.RUnlock()
+
+	all := make([]*Check, m.total)
+	for _, checks := range m.checks {
+		for _, check := range checks {
+			all = append(all, &check)
+		}
+	}
+
+	return all
+}
