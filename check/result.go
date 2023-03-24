@@ -1,6 +1,7 @@
 package check
 
 import (
+	"github.com/google/uuid"
 	"time"
 )
 
@@ -42,6 +43,7 @@ func NewResultStateFromString(state string) ResultState {
 
 // Result contains the state, reason, metrics and time of a check.Command.
 type Result struct {
+	Id         uuid.UUID
 	State      ResultState
 	ReasonCode string
 	Metrics    []ResultMetric
@@ -52,6 +54,7 @@ type Result struct {
 // set to now.
 func NewResult(state ResultState, reasonCode string, metrics []ResultMetric) *Result {
 	return &Result{
+		Id:         uuid.New(),
 		State:      state,
 		ReasonCode: reasonCode,
 		Metrics:    metrics,
@@ -97,6 +100,7 @@ func (r Result) justifiesNewIncidentForCheck(check Check) bool {
 // cannot be determined.
 func MakeUnknownResult(reasonCode string) *Result {
 	return &Result{
+		Id:         uuid.New(),
 		State:      StateUnknown,
 		ReasonCode: reasonCode,
 		Metrics:    nil,
