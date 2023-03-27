@@ -1,26 +1,27 @@
-package check
+package memqueue
 
 import (
+	"github.com/seankndy/gopoller/check"
 	"testing"
 	"time"
 )
 
 func TestMemoryCheckQueueEnqueuesAndDequeues(t *testing.T) {
-	q := NewMemoryQueue()
+	q := NewQueue()
 
 	sixtySecAgo := time.Now().Add(-(60 * time.Second))
 	ninetySecAgo := time.Now().Add(-(90 * time.Second))
 	thirtySecAgo := time.Now().Add(-(30 * time.Second))
 
-	check1 := Check{Id: "12345", Schedule: &PeriodicSchedule{IntervalSeconds: 60}, LastCheck: &sixtySecAgo}
-	check2 := Check{Id: "54321", Schedule: &PeriodicSchedule{IntervalSeconds: 60}, LastCheck: &ninetySecAgo}
-	check3 := Check{Id: "56789", Schedule: &PeriodicSchedule{IntervalSeconds: 60}, LastCheck: &thirtySecAgo} // not due yet
+	check1 := &check.Check{Id: "12345", Schedule: &check.PeriodicSchedule{IntervalSeconds: 60}, LastCheck: &sixtySecAgo}
+	check2 := &check.Check{Id: "54321", Schedule: &check.PeriodicSchedule{IntervalSeconds: 60}, LastCheck: &ninetySecAgo}
+	check3 := &check.Check{Id: "56789", Schedule: &check.PeriodicSchedule{IntervalSeconds: 60}, LastCheck: &thirtySecAgo} // not due yet
 
 	q.Enqueue(check1)
 	q.Enqueue(check2)
 	q.Enqueue(check3)
 
-	var c *Check
+	var c *check.Check
 	c = q.Dequeue()
 	if c.Id != check2.Id {
 		t.Errorf("Dequeue(): expected check with ID %v, got %v", check2.Id, c.Id)

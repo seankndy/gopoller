@@ -9,6 +9,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/seankndy/gopoller/memqueue"
 	"github.com/seankndy/gopoller/server"
 	"github.com/seankndy/gopoller/check"
 	"github.com/seankndy/gopoller/check/command/ping"
@@ -22,14 +23,14 @@ func main() {
 	// create new context that cancels with sigint signal (ctrl+c)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
-	
+
 	// this is where you will store all the checks you want to periodically execute
 	// you could write your own check queue as well (just implement the check.Queue interface)
-	checkQueue := check.NewMemoryQueue()
-	
+	checkQueue := memqueue.NewQueue()
+
 	// queue up a ping couple checks.  these checks would normally come from your own database
 	// and be populated programmatically
-	checkQueue.Enqueue(*check.New(
+	checkQueue.Enqueue(check.New(
 		"check1",
 		check.WithPeriodicSchedule(10),
 		check.WithHandlers([]check.Handler{dummy.Handler{}}),
@@ -45,12 +46,12 @@ func main() {
 		}),
 	))
 
-	checkQueue.Enqueue(*check.New(
+	checkQueue.Enqueue(check.New(
 		"check2",
 		check.WithPeriodicSchedule(10),
 		check.WithHandlers([]check.Handler{dummy.Handler{}}),
 		check.WithCommand(&ping.Command{
-			Addr:                      "1.1.1.1",
+			Addr:                    "1.1.1.1",
 			Count:                   5,
 			Interval:                100 * time.Millisecond,
 			Size:                    64,
@@ -64,10 +65,10 @@ func main() {
 	// creates the server with max running checks of 3
 	svr := server.New(checkQueue, server.WithMaxRunningChecks(3))
 	// here we have a couple callbacks to do some rudimentary logging when check start and finish
-	svr.OnCheckExecuting = func(chk check.Check) {
+	svr.OnCheckExecuting = func(chk *check.Check) {
 		fmt.Printf("Check beginning execution: %v\n", chk)
 	}
-	svr.OnCheckFinished = func(chk check.Check, runDuration time.Duration) {
+	svr.OnCheckFinished = func(chk *check.Check, runDuration time.Duration) {
 		fmt.Printf("Check finished execution: %v (%.3f seconds)\n", chk, runDuration.Seconds())
 	}
 	// runs forever

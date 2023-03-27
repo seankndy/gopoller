@@ -11,6 +11,7 @@ import (
 	"github.com/seankndy/gopoller/check/command/smtp"
 	"github.com/seankndy/gopoller/check/command/snmp"
 	"github.com/seankndy/gopoller/check/handler/dummy"
+	"github.com/seankndy/gopoller/memqueue"
 	"github.com/seankndy/gopoller/server"
 	"os"
 	"os/signal"
@@ -21,7 +22,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	checkQueue := check.NewMemoryQueue()
+	checkQueue := memqueue.NewQueue()
 
 	lastCheck1 := time.Now().Add(-100 * time.Second)
 	check1 := check.New(
@@ -40,7 +41,7 @@ func main() {
 		check.WithHandlers([]check.Handler{&dummy.Handler{}}),
 	)
 	check1.LastCheck = &lastCheck1
-	checkQueue.Enqueue(*check1)
+	checkQueue.Enqueue(check1)
 
 	lastCheck2 := time.Now().Add(-90 * time.Second)
 	check2 := check.New(
@@ -52,7 +53,7 @@ func main() {
 		check.WithHandlers([]check.Handler{&dummy.Handler{}}),
 	)
 	check2.LastCheck = &lastCheck2
-	checkQueue.Enqueue(*check2)
+	checkQueue.Enqueue(check2)
 
 	check3 := check.New(
 		"check3",
@@ -69,7 +70,7 @@ func main() {
 		check.WithPeriodicSchedule(10),
 		check.WithHandlers([]check.Handler{&dummy.Handler{}}),
 	)
-	checkQueue.Enqueue(*check3)
+	checkQueue.Enqueue(check3)
 
 	check4 := check.New(
 		"check4",
@@ -85,7 +86,7 @@ func main() {
 		check.WithPeriodicSchedule(10),
 		check.WithHandlers([]check.Handler{&dummy.Handler{}}),
 	)
-	checkQueue.Enqueue(*check4)
+	checkQueue.Enqueue(check4)
 
 	check5 := check.New(
 		"check5",
@@ -93,7 +94,7 @@ func main() {
 		check.WithPeriodicSchedule(10),
 		check.WithHandlers([]check.Handler{&dummy.Handler{}}),
 	)
-	checkQueue.Enqueue(*check5)
+	checkQueue.Enqueue(check5)
 
 	check6 := check.New(
 		"check6",
@@ -109,23 +110,20 @@ func main() {
 		check.WithPeriodicSchedule(10),
 		check.WithHandlers([]check.Handler{&dummy.Handler{}}),
 	)
-	checkQueue.Enqueue(*check6)
+	checkQueue.Enqueue(check6)
 
 	// create and run the server
 	svr := server.New(checkQueue, server.WithMaxRunningChecks(2))
-	svr.OnCheckExecuting = func(chk check.Check) {
+	svr.OnCheckExecuting = func(chk *check.Check) {
 		//fmt.Printf("Check beginning execution: %v\n", check)
 	}
-	svr.OnCheckErrored = func(chk check.Check, err error) {
+	svr.OnCheckErrored = func(chk *check.Check, err error) {
 		fmt.Printf("CHECK ERROR: %v", err)
 	}
-	svr.OnCheckFinished = func(chk check.Check, runDuration time.Duration) {
+	svr.OnCheckFinished = func(chk *check.Check, runDuration time.Duration) {
 		fmt.Printf("Check finished execution: %v (%.3f seconds)\n", chk, runDuration.Seconds())
 	}
 	svr.Run(ctx)
-
-	// flush the queue prior to shut down
-	checkQueue.Flush()
 
 	fmt.Println("Exiting.")
 }

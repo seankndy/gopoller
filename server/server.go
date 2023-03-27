@@ -18,13 +18,13 @@ type Server struct {
 	MaxRunningChecks int
 
 	// Callback triggerred just prior to check execution (useful for logging)
-	OnCheckExecuting func(check check.Check)
+	OnCheckExecuting func(chk *check.Check)
 
 	// Callback triggerred if check command errors (useful for logging)
-	OnCheckErrored func(check check.Check, err error)
+	OnCheckErrored func(chk *check.Check, err error)
 
 	// Callback triggered just after a check finishes execution (useful for logging)
-	OnCheckFinished func(check check.Check, runDuration time.Duration)
+	OnCheckFinished func(chk *check.Check, runDuration time.Duration)
 }
 
 type Option func(*Server)
@@ -98,7 +98,7 @@ loop:
 	for chk := range pendingChecks {
 		select {
 		case <-ctx.Done():
-			s.checkQueue.Enqueue(*chk) // put the check back, we're shutting down
+			s.checkQueue.Enqueue(chk) // put the check back, we're shutting down
 			break loop
 		case runningLimiter <- struct{}{}:
 			wg.Add(1)
@@ -106,25 +106,25 @@ loop:
 				defer wg.Done()
 				defer func() {
 					if s.AutoReEnqueue {
-						s.checkQueue.Enqueue(*chk)
+						s.checkQueue.Enqueue(chk)
 					}
 					<-runningLimiter
 				}()
 
 				onCheckExecuting := s.OnCheckExecuting
 				if onCheckExecuting != nil {
-					onCheckExecuting(*chk)
+					onCheckExecuting(chk)
 				}
 				startTime := time.Now()
 				if err := chk.Execute(); err != nil {
 					onCheckErrored := s.OnCheckErrored
 					if onCheckErrored != nil {
-						onCheckErrored(*chk, err)
+						onCheckErrored(chk, err)
 					}
 				}
 				onCheckFinished := s.OnCheckFinished
 				if onCheckFinished != nil {
-					onCheckFinished(*chk, time.Now().Sub(startTime))
+					onCheckFinished(chk, time.Now().Sub(startTime))
 				}
 			}(chk)
 		}
@@ -134,6 +134,6 @@ loop:
 
 	// put any pending checks back into the queue prior to shut down as they never ran
 	for chk := range pendingChecks {
-		s.checkQueue.Enqueue(*chk)
+		s.checkQueue.Enqueue(chk)
 	}
 }
