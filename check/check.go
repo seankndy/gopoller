@@ -2,7 +2,9 @@ package check
 
 import (
 	"errors"
+	"fmt"
 	"github.com/hashicorp/go-multierror"
+	"reflect"
 	"sync"
 	"time"
 )
@@ -166,7 +168,11 @@ func (c *Check) runResultHandlerProcessing(result Result, newIncident *Incident)
 			err := h.Process(*c, result, newIncident)
 
 			if err != nil {
-				errorCh <- err
+				t := reflect.TypeOf(h)
+				if t.Kind() == reflect.Ptr {
+					t = t.Elem()
+				}
+				errorCh <- fmt.Errorf("error in handler '%s': %v", t.Name(), err)
 			}
 		}(h)
 	}
