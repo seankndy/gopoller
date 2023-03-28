@@ -2,7 +2,9 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"github.com/seankndy/gopoller/check"
+	"os"
 	"sync"
 	"time"
 )
@@ -61,11 +63,14 @@ func (s *Server) Run(ctx context.Context) {
 	runningLimiter := make(chan struct{}, s.MaxRunningChecks)
 	defer close(runningLimiter)
 
+	runningChecks := make(map[string]time.Time, s.MaxRunningChecks)
 	pendingChecks := make(chan *check.Check, s.MaxRunningChecks)
 
 	var wg sync.WaitGroup
+
+	// launch goroutine that populates pendingCheck channel from queue indefinitely
 	wg.Add(1)
-	go func() { // populate pendingCheck channel from queue indefinitely
+	go func() {
 		defer wg.Done()
 		defer close(pendingChecks)
 
@@ -94,6 +99,26 @@ func (s *Server) Run(ctx context.Context) {
 		}
 	}()
 
+	// launch goroutine to periodically check for long-running checks
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		ticker := time.NewTicker(60 * time.Second)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				for id, t := range runningChecks {
+					if execTime := time.Now().Sub(t); execTime > 30*time.Second {
+						fmt.Fprintf(os.Stderr, "WARNING: Check with ID %s has been executing for >30sec (%d seconds)!\n", id, execTime/time.Second)
+					}
+				}
+			}
+		}
+	}()
+
 loop:
 	for chk := range pendingChecks {
 		select {
@@ -101,6 +126,8 @@ loop:
 			s.checkQueue.Enqueue(chk) // put the check back, we're shutting down
 			break loop
 		case runningLimiter <- struct{}{}:
+			runningChecks[chk.Id] = time.Now()
+
 			wg.Add(1)
 			go func(chk *check.Check) {
 				defer wg.Done()
