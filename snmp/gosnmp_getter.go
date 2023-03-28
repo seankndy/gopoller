@@ -64,9 +64,9 @@ func (c *GoSnmpGetter) connect(host *Host) (*gosnmp.GoSNMP, error) {
 		Transport:          host.Transport,
 		Community:          host.Community,
 		Version:            version,
-		Retries:            3,
-		Timeout:            2 * time.Second,
-		ExponentialTimeout: true,
+		Retries:            1,
+		Timeout:            3 * time.Second,
+		ExponentialTimeout: false,
 	}
 
 	err := client.Connect()
