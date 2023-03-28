@@ -2,6 +2,7 @@ package ping
 
 import (
 	probing "github.com/prometheus-community/pro-bing"
+	"time"
 )
 
 type ProBingPinger struct{}
@@ -15,6 +16,7 @@ func (p *ProBingPinger) Run(cmd *Command) (*PingerStats, error) {
 	pinger.Interval = cmd.Interval
 	pinger.Count = cmd.Count
 	pinger.Size = cmd.Size
+	pinger.Timeout = time.Duration(cmd.Count) * time.Second
 	if cmd.UseIcmp {
 		pinger.SetPrivileged(true)
 	}
