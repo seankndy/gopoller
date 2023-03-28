@@ -64,11 +64,11 @@ func (h *Handler) Process(check check.Check, result check.Result, newIncident *c
 	for _, rrdFile := range rrdFileDefs {
 		exists, err := rrdFileExists(rrdFile.Filename)
 		if err != nil {
-			return err
+			return fmt.Errorf("error checking if rrd file exists: %v", err)
 		}
 		if !exists {
 			if err := h.client.Create(rrdFile.Filename, rrdFile.DataSources, rrdFile.RoundRobinArchives, rrdFile.Step); err != nil {
-				return err
+				return fmt.Errorf("error creating rrd file: %v", err)
 			}
 		}
 	}
@@ -77,11 +77,11 @@ func (h *Handler) Process(check check.Check, result check.Result, newIncident *c
 	if updateCmds := buildUpdateCommands(rrdFileDefs, result); updateCmds != nil {
 		err := h.client.Batch(updateCmds...)
 		if err != nil {
-			return err
+			return fmt.Errorf("error batch-updating rrd files: %v", err)
 		}
 	}
 
-	return nil
+	return
 }
 
 // RrdFileDef defines a rrd file and it's characteristics
