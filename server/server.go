@@ -63,7 +63,12 @@ func (s *Server) Run(ctx context.Context) {
 	runningLimiter := make(chan struct{}, s.MaxRunningChecks)
 	defer close(runningLimiter)
 
+	insertRunningCheckChan := make(chan *check.Check)
+	removeRunningCheckChan := make(chan *check.Check)
 	runningChecks := make(map[string]time.Time, s.MaxRunningChecks)
+	defer close(insertRunningCheckChan)
+	defer close(removeRunningCheckChan)
+
 	pendingChecks := make(chan *check.Check, s.MaxRunningChecks)
 
 	var wg sync.WaitGroup
@@ -99,7 +104,8 @@ func (s *Server) Run(ctx context.Context) {
 		}
 	}()
 
-	// launch goroutine to periodically check for long-running checks
+	// launch goroutine to insert/remove running checks from the runningChecks tracker and also periodically check for
+	// long-running checks
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -107,14 +113,18 @@ func (s *Server) Run(ctx context.Context) {
 		ticker := time.NewTicker(60 * time.Second)
 		for {
 			select {
-			case <-ctx.Done():
-				return
+			case chk := <-insertRunningCheckChan:
+				runningChecks[chk.Id] = time.Now()
+			case chk := <-removeRunningCheckChan:
+				delete(runningChecks, chk.Id)
 			case <-ticker.C:
 				for id, t := range runningChecks {
 					if execTime := time.Now().Sub(t); execTime > 30*time.Second {
 						fmt.Fprintf(os.Stderr, "WARNING: Check with ID %s has been executing for >30sec (%d seconds)!\n", id, execTime/time.Second)
 					}
 				}
+			case <-ctx.Done():
+				return
 			}
 		}
 	}()
@@ -126,7 +136,7 @@ loop:
 			s.checkQueue.Enqueue(chk) // put the check back, we're shutting down
 			break loop
 		case runningLimiter <- struct{}{}:
-			runningChecks[chk.Id] = time.Now()
+			insertRunningCheckChan <- chk
 
 			wg.Add(1)
 			go func(chk *check.Check) {
@@ -135,8 +145,9 @@ loop:
 					if s.AutoReEnqueue {
 						s.checkQueue.Enqueue(chk)
 					}
-					delete(runningChecks, chk.Id)
+
 					<-runningLimiter
+					removeRunningCheckChan <- chk
 				}()
 
 				onCheckExecuting := s.OnCheckExecuting
