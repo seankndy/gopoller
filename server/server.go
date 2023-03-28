@@ -63,12 +63,6 @@ func (s *Server) Run(ctx context.Context) {
 	runningLimiter := make(chan struct{}, s.MaxRunningChecks)
 	defer close(runningLimiter)
 
-	closeRunningCheckChan := make(chan struct{})
-	insertRunningCheckChan := make(chan *check.Check)
-	removeRunningCheckChan := make(chan *check.Check)
-	runningChecks := make(map[string]time.Time, s.MaxRunningChecks)
-	defer close(closeRunningCheckChan)
-
 	pendingChecks := make(chan *check.Check, s.MaxRunningChecks)
 
 	var wg sync.WaitGroup
@@ -104,31 +98,9 @@ func (s *Server) Run(ctx context.Context) {
 		}
 	}()
 
-	// launch goroutine to insert/remove running checks from the runningChecks tracker and also periodically check for
-	// long-running checks
-	go func() {
-		defer close(insertRunningCheckChan)
-		defer close(removeRunningCheckChan)
-
-		ticker := time.NewTicker(60 * time.Second)
-		for {
-			select {
-			case chk := <-insertRunningCheckChan:
-				runningChecks[chk.Id] = time.Now()
-			case chk := <-removeRunningCheckChan:
-				delete(runningChecks, chk.Id)
-			case <-ticker.C:
-				for id, t := range runningChecks {
-					if execTime := time.Now().Sub(t); execTime > 30*time.Second {
-						fmt.Fprintf(os.Stderr, "WARNING: Check with ID %s has been executing for >30sec (%d seconds)!\n", id, execTime/time.Second)
-					}
-				}
-			case <-closeRunningCheckChan:
-				ticker.Stop()
-				return
-			}
-		}
-	}()
+	runningChecks := sync.Map{}
+	longRunningTicker := time.NewTicker(60 * time.Second)
+	defer longRunningTicker.Stop()
 
 loop:
 	for chk := range pendingChecks {
@@ -137,7 +109,7 @@ loop:
 			s.checkQueue.Enqueue(chk) // put the check back, we're shutting down
 			break loop
 		case runningLimiter <- struct{}{}:
-			insertRunningCheckChan <- chk
+			runningChecks.Store(chk.Id, time.Now())
 
 			wg.Add(1)
 			go func(chk *check.Check) {
@@ -148,7 +120,7 @@ loop:
 					}
 
 					<-runningLimiter
-					removeRunningCheckChan <- chk
+					runningChecks.Delete(chk.Id)
 				}()
 
 				onCheckExecuting := s.OnCheckExecuting
@@ -167,6 +139,15 @@ loop:
 					onCheckFinished(chk, time.Now().Sub(startTime))
 				}
 			}(chk)
+		case <-longRunningTicker.C:
+			runningChecks.Range(func(key, value interface{}) bool {
+				id := key.(string)
+				t := value.(time.Time)
+				if execTime := time.Now().Sub(t); execTime > 30*time.Second {
+					fmt.Fprintf(os.Stderr, "WARNING: Check with ID %s has been executing for >30sec (%d seconds)!\n", id, execTime/time.Second)
+				}
+				return true
+			})
 		}
 	}
 
