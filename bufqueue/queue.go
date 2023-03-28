@@ -28,7 +28,7 @@ type CheckEnqueuer interface {
 // The incoming queue/buffer size is controlled by the enqueuer interval duration.
 type Queue struct {
 	// queue is a memqueue.Queue that outgoing checks are stored in
-	queue memqueue.Queue
+	queue *memqueue.Queue
 
 	// pendingEnqueued is a slice of pointers to check.Check structs that are awaiting official enquement by the
 	// CheckEnqueuer.
@@ -56,6 +56,7 @@ func NewQueue(
 	ctx context.Context,
 ) *Queue {
 	q := &Queue{
+		queue:                 memqueue.NewQueue(),
 		CheckProvider:         checkProvider,
 		CheckEnqueuer:         checkEnqueuer,
 		CheckEnqueuerInterval: checkEnqueuerInterval,
