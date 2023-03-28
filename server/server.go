@@ -108,10 +108,7 @@ func (s *Server) Run(ctx context.Context) {
 
 	// launch goroutine to insert/remove running checks from the runningChecks tracker and also periodically check for
 	// long-running checks
-	wg.Add(1)
 	go func() {
-		defer wg.Done()
-
 		ticker := time.NewTicker(60 * time.Second)
 		for {
 			select {
