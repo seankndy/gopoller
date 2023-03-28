@@ -68,8 +68,6 @@ func (s *Server) Run(ctx context.Context) {
 	removeRunningCheckChan := make(chan *check.Check)
 	runningChecks := make(map[string]time.Time, s.MaxRunningChecks)
 	defer close(closeRunningCheckChan)
-	defer close(insertRunningCheckChan)
-	defer close(removeRunningCheckChan)
 
 	pendingChecks := make(chan *check.Check, s.MaxRunningChecks)
 
@@ -109,6 +107,9 @@ func (s *Server) Run(ctx context.Context) {
 	// launch goroutine to insert/remove running checks from the runningChecks tracker and also periodically check for
 	// long-running checks
 	go func() {
+		defer close(insertRunningCheckChan)
+		defer close(removeRunningCheckChan)
+
 		ticker := time.NewTicker(60 * time.Second)
 		for {
 			select {
