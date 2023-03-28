@@ -135,6 +135,7 @@ loop:
 					if s.AutoReEnqueue {
 						s.checkQueue.Enqueue(chk)
 					}
+					delete(runningChecks, chk.Id)
 					<-runningLimiter
 				}()
 
