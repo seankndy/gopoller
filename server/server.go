@@ -103,12 +103,12 @@ func (s *Server) Run(ctx context.Context) {
 	defer longRunningTicker.Stop()
 
 loop:
-	for chk := range pendingChecks {
+	for {
 		select {
 		case <-ctx.Done():
-			s.checkQueue.Enqueue(chk) // put the check back, we're shutting down
 			break loop
-		case runningLimiter <- struct{}{}:
+		case chk := <-pendingChecks:
+			runningLimiter <- struct{}{}
 			runningChecks.Store(chk.Id, time.Now())
 
 			wg.Add(1)
