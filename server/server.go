@@ -63,9 +63,11 @@ func (s *Server) Run(ctx context.Context) {
 	runningLimiter := make(chan struct{}, s.MaxRunningChecks)
 	defer close(runningLimiter)
 
+	closeRunningCheckChan := make(chan struct{})
 	insertRunningCheckChan := make(chan *check.Check)
 	removeRunningCheckChan := make(chan *check.Check)
 	runningChecks := make(map[string]time.Time, s.MaxRunningChecks)
+	defer close(closeRunningCheckChan)
 	defer close(insertRunningCheckChan)
 	defer close(removeRunningCheckChan)
 
@@ -123,7 +125,8 @@ func (s *Server) Run(ctx context.Context) {
 						fmt.Fprintf(os.Stderr, "WARNING: Check with ID %s has been executing for >30sec (%d seconds)!\n", id, execTime/time.Second)
 					}
 				}
-			case <-ctx.Done():
+			case <-closeRunningCheckChan:
+				ticker.Stop()
 				return
 			}
 		}
