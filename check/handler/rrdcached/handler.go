@@ -39,10 +39,13 @@ func (h *Handler) Process(check check.Check, result check.Result, newIncident *c
 
 	// connect to rrdcached
 	err = h.client.Connect()
+	if err != nil {
+		return fmt.Errorf("error connecting to rrdcached: %v", err)
+	}
 	defer func() {
 		errC := h.client.Close()
 		if err == nil {
-			err = errC
+			err = fmt.Errorf("error closing connection to rrdcached: %v", errC)
 		}
 	}()
 
