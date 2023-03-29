@@ -23,17 +23,19 @@ func NewHandler(client Client, getRrdFileDefs func(*check.Check, *check.Result) 
 	}
 }
 
-func (h *Handler) Mutate(check *check.Check, result *check.Result, newIncident *check.Incident) {
+func (h *Handler) Mutate(*check.Check, *check.Result, *check.Incident) {
 	return
 }
 
-func (h *Handler) Process(check *check.Check, result *check.Result, newIncident *check.Incident) (err error) {
+func (h *Handler) Process(chk *check.Check, result *check.Result, _ *check.Incident) (err error) {
 	getRrdFileDefs := h.GetRrdFileDefs
 	if getRrdFileDefs == nil {
+		chk.Debugf("no rrd file def func defined")
 		return
 	}
-	rrdFileDefs := getRrdFileDefs(check, result)
+	rrdFileDefs := getRrdFileDefs(chk, result)
 	if rrdFileDefs == nil {
+		chk.Debugf("no rrd file defs returned from GetRrdFileDefs func")
 		return
 	}
 
@@ -67,15 +69,24 @@ func (h *Handler) Process(check *check.Check, result *check.Result, newIncident 
 			return fmt.Errorf("error checking if rrd file exists: %v", err)
 		}
 		if !exists {
+			chk.Debugf("rrd file %s does not exist, attempting to create it", rrdFile.Filename)
 			if err := h.client.Create(rrdFile.Filename, rrdFile.DataSources, rrdFile.RoundRobinArchives, rrdFile.Step); err != nil {
 				return fmt.Errorf("error creating rrd file: %v", err)
 			}
+		} else {
+			chk.Debugf("rrd file %s exists", rrdFile.Filename)
 		}
 	}
 
 	// update rrd files
 	if updateCmds := buildUpdateCommands(rrdFileDefs, result); updateCmds != nil {
-		err := h.client.Batch(updateCmds...)
+		cmdStrings := make([]string, len(updateCmds))
+		for i, uc := range updateCmds {
+			cmdStrings[i] = uc.String()
+		}
+		chk.Debugf("sending BATCH update: %s", strings.Join(cmdStrings, ", "))
+
+		err = h.client.Batch(updateCmds...)
 		if err != nil {
 			return fmt.Errorf("error batch-updating rrd files: %v", err)
 		}

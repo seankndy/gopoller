@@ -42,8 +42,11 @@ func main() {
 	lastCheck2 := time.Now().Add(-90 * time.Second)
 	check2 := check.New(
 		"check2",
-		check.WithCommand(snmp.NewCommand("209.193.82.89", "visionary", []snmp.OidMonitor{
-			*snmp.NewOidMonitor(".1.3.6.1.2.1.31.1.1.1.10.31", "ifHCOutOctets"),
+		check.WithCommand(snmp.NewCommand("172.30.37.165", "public", []snmp.OidMonitor{
+			*snmp.NewOidMonitor(".1.3.6.1.4.1.7571.100.1.1.5.1.1.1.10.1.5.1", "foo"),
+			*snmp.NewOidMonitor(".1.3.6.1.4.1.7571.100.1.1.5.1.1.1.10.1.4.1", "foo2"),
+			*snmp.NewOidMonitor(".1.3.6.1.4.1.7571.100.1.1.5.1.1.1.12.1.6.1", "foo3"),
+			*snmp.NewOidMonitor(".1.3.6.1.4.1.7571.100.1.1.5.1.1.1.12.1.10.1", "foo4"),
 		})),
 		check.WithPeriodicSchedule(10),
 		check.WithHandlers([]check.Handler{&dummy.Handler{}}),
