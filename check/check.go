@@ -57,13 +57,13 @@ type Check struct {
 	LastResult *Result
 
 	// debugLogger is called by Debug. Commands and Handlers call the Check's
-	// Debug() method with debugging information.  This is generally nil unless
+	// Debugf() method with debugging information.  This is generally nil unless
 	// you want to debug a particular Check.
 	debugLogger debugLogger
 }
 
 type debugLogger interface {
-	Debug(format string, args ...any)
+	Debugf(format string, args ...any)
 }
 
 type Option func(*Check)
@@ -137,9 +137,9 @@ func (c *Check) IsDue() bool {
 	return c.DueAt().Compare(time.Now()) <= 0
 }
 
-// Debug should be used liberally by Commands and Handlers to provide debug
+// Debugf should be used liberally by Commands and Handlers to provide debug
 // information.
-func (c *Check) Debug(format string, args ...any) {
+func (c *Check) Debugf(format string, args ...any) {
 	if c.debugLogger != nil {
 		formatPrefix := fmt.Sprintf("[ID:%s] ", c.Id)
 
@@ -149,7 +149,7 @@ func (c *Check) Debug(format string, args ...any) {
 			formatPrefix = fmt.Sprintf("[%s(%d).%s] ", file, line, runtime.FuncForPC(pc).Name())
 		}
 
-		c.debugLogger.Debug(formatPrefix+format, args...)
+		c.debugLogger.Debugf(formatPrefix+format, args...)
 	}
 }
 
