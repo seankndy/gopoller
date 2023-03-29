@@ -123,6 +123,10 @@ func WithDebugLogger(logger debugLogger) Option {
 	}
 }
 
+func (c *Check) SetDebugLogger(logger debugLogger) {
+	c.debugLogger = logger
+}
+
 // DueAt returns the time when check is due (could be past or future)
 func (c *Check) DueAt() time.Time {
 	return c.Schedule.DueAt(*c)
