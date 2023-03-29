@@ -40,12 +40,12 @@ func (i *Incident) IsResolved() bool {
 
 // MakeIncidentFromResults creates a new Incident based on a Check last Result,
 // and it's current Result.
-func MakeIncidentFromResults(lastResult *Result, currentResult Result) Incident {
+func MakeIncidentFromResults(lastResult *Result, currentResult *Result) *Incident {
 	if lastResult == nil {
 		lastResult = MakeUnknownResult("")
 	}
 
-	return Incident{
+	return &Incident{
 		Id:         uuid.New(),
 		FromState:  lastResult.State,
 		ToState:    currentResult.State,

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/hashicorp/go-multierror"
 	"reflect"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -54,6 +55,15 @@ type Check struct {
 	// you are certain this is not required in your case, then this could always
 	// be nil.
 	LastResult *Result
+
+	// debugLogger is called by Debug. Commands and Handlers call the Check's
+	// Debug() method with debugging information.  This is generally nil unless
+	// you want to debug a particular Check.
+	debugLogger debugLogger
+}
+
+type debugLogger interface {
+	Debug(format string, args ...any)
 }
 
 type Option func(*Check)
@@ -107,6 +117,12 @@ func WithSchedule(schedule Schedule) Option {
 	}
 }
 
+func WithDebugLogger(logger debugLogger) Option {
+	return func(c *Check) {
+		c.debugLogger = logger
+	}
+}
+
 // DueAt returns the time when check is due (could be past or future)
 func (c *Check) DueAt() time.Time {
 	return c.Schedule.DueAt(*c)
@@ -117,6 +133,22 @@ func (c *Check) IsDue() bool {
 	return c.DueAt().Compare(time.Now()) <= 0
 }
 
+// Debug should be used liberally by Commands and Handlers to provide debug
+// information.
+func (c *Check) Debug(format string, args ...any) {
+	if c.debugLogger != nil {
+		formatPrefix := fmt.Sprintf("[ID:%s] ", c.Id)
+
+		// get the caller's information
+		pc, file, line, ok := runtime.Caller(1)
+		if ok {
+			formatPrefix = fmt.Sprintf("[%s(%d).%s] ", file, line, runtime.FuncForPC(pc).Name())
+		}
+
+		c.debugLogger.Debug(formatPrefix+format, args...)
+	}
+}
+
 // Execute executes a Check's Command followed by its Handlers.  It then sets
 // the Incident (if there is one), LastCheck and LastResult fields on the Check.
 func (c *Check) Execute() error {
@@ -124,12 +156,12 @@ func (c *Check) Execute() error {
 		return errors.New("no command to execute")
 	}
 
-	result, err := c.Command.Run(*c)
+	result, err := c.Command.Run(c)
 
 	newIncident := c.makeNewIncidentIfJustified(result)
 	c.resolveOrDiscardPreviousIncident(result, newIncident)
 
-	c.runResultHandlerMutations(&result, newIncident)
+	c.runResultHandlerMutations(result, newIncident)
 	errP := c.runResultHandlerProcessing(result, newIncident)
 	if errP != nil {
 		err = multierror.Append(err, errP)
@@ -137,7 +169,7 @@ func (c *Check) Execute() error {
 
 	t := time.Now()
 	c.LastCheck = &t
-	c.LastResult = &result
+	c.LastResult = result
 	if newIncident != nil {
 		c.Incident = newIncident
 	}
@@ -153,7 +185,7 @@ func (c *Check) runResultHandlerMutations(result *Result, newIncident *Incident)
 	}
 }
 
-func (c *Check) runResultHandlerProcessing(result Result, newIncident *Incident) error {
+func (c *Check) runResultHandlerProcessing(result *Result, newIncident *Incident) error {
 	if c.Handlers == nil {
 		return nil
 	}
@@ -165,7 +197,7 @@ func (c *Check) runResultHandlerProcessing(result Result, newIncident *Incident)
 		go func(h Handler) {
 			defer wg.Done()
 
-			err := h.Process(*c, result, newIncident)
+			err := h.Process(c, result, newIncident)
 
 			if err != nil {
 				t := reflect.TypeOf(h)
@@ -191,18 +223,18 @@ func (c *Check) runResultHandlerProcessing(result Result, newIncident *Incident)
 	return errors
 }
 
-func (c *Check) makeNewIncidentIfJustified(result Result) *Incident {
+func (c *Check) makeNewIncidentIfJustified(result *Result) *Incident {
 	if !result.justifiesNewIncidentForCheck(*c) {
 		return nil
 	}
 
 	i := MakeIncidentFromResults(c.LastResult, result)
-	return &i
+	return i
 }
 
 // resolveOrDiscardPreviousIncident takes a new result and incident and determines if an old incident within the
 // check should be resolved or discarded.
-func (c *Check) resolveOrDiscardPreviousIncident(newResult Result, newIncident *Incident) {
+func (c *Check) resolveOrDiscardPreviousIncident(newResult *Result, newIncident *Incident) {
 	// if an existing incident exists and the current state is OK or there is now a new incident
 	if c.Incident != nil && (newResult.State == StateOk || newIncident != nil) {
 		if c.Incident.Resolved == nil {
@@ -218,7 +250,7 @@ func (c *Check) resolveOrDiscardPreviousIncident(newResult Result, newIncident *
 // Command is a simple interface with a Run(Check) method that returns a Result
 // and error.
 type Command interface {
-	Run(Check) (Result, error)
+	Run(*Check) (*Result, error)
 }
 
 // Handler mutates and/or processes a Check after it has executed.  Mutate()
@@ -233,5 +265,5 @@ type Handler interface {
 	// Process executes asynchronously and should never mutate data. newIncident
 	// is a pointer as it may be nil indicating there isn't a new incident for
 	// the Check.
-	Process(check Check, newResult Result, newIncident *Incident) error
+	Process(check *Check, newResult *Result, newIncident *Incident) error
 }

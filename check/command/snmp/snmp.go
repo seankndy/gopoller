@@ -62,7 +62,7 @@ func NewCommand(addr, community string, monitors []OidMonitor) *Command {
 	}
 }
 
-func (c *Command) Run(chk check.Check) (result check.Result, err error) {
+func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 	var getter snmp.Getter
 	if c.getter == nil {
 		getter = snmp.DefaultGetter
@@ -79,10 +79,14 @@ func (c *Command) Run(chk check.Check) (result check.Result, err error) {
 		oidMonitorsByOid[c.OidMonitors[k].Oid] = &c.OidMonitors[k]
 	}
 
+	chk.Debug("oid(s) to fetch: %s", rawOids)
+
 	objects, err := getter.Get(&c.Host, rawOids)
 	if err != nil {
-		return *check.MakeUnknownResult("CMD_FAILURE"), err
+		return check.MakeUnknownResult("CMD_FAILURE"), err
 	}
+
+	chk.Debug("objects returned: %s", objects)
 
 	var resultMetrics []check.ResultMetric
 	resultState := check.StateUnknown
@@ -96,7 +100,7 @@ func (c *Command) Run(chk check.Check) (result check.Result, err error) {
 			}
 		}
 		if oidMonitor == nil {
-			return *check.MakeUnknownResult("CMD_FAILURE"),
+			return check.MakeUnknownResult("CMD_FAILURE"),
 				fmt.Errorf("snmp.Command.Run(): oid %s could not be found in monitors", object.Oid)
 		}
 
@@ -117,7 +121,7 @@ func (c *Command) Run(chk check.Check) (result check.Result, err error) {
 			// if state is still Unknown, check if this snmp object exceeds any thresholds
 			if resultState == check.StateUnknown {
 				// get last metric to calculate difference
-				lastMetric := getChecksLastResultMetricByLabel(&chk, oidMonitor.Name)
+				lastMetric := getChecksLastResultMetricByLabel(chk, oidMonitor.Name)
 				var lastValue *big.Int
 				if lastMetric != nil {
 					var ok bool
@@ -160,7 +164,7 @@ func (c *Command) Run(chk check.Check) (result check.Result, err error) {
 
 	}
 
-	return *check.NewResult(resultState, resultReason, resultMetrics), nil
+	return check.NewResult(resultState, resultReason, resultMetrics), nil
 }
 
 func getChecksLastResultMetricByLabel(chk *check.Check, label string) *check.ResultMetric {

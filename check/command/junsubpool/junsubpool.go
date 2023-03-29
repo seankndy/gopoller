@@ -35,7 +35,7 @@ func (c *Command) SetGetter(getter snmp.Getter) {
 	c.getter = getter
 }
 
-func (c *Command) Run(check.Check) (check.Result, error) {
+func (c *Command) Run(*check.Check) (*check.Result, error) {
 	var getter snmp.Getter
 	if c.getter == nil {
 		getter = snmp.DefaultGetter
@@ -45,7 +45,7 @@ func (c *Command) Run(check.Check) (check.Result, error) {
 
 	objects, err := getter.Get(&c.Host, c.getOids())
 	if err != nil {
-		return *check.MakeUnknownResult("CMD_FAILURE"), err
+		return check.MakeUnknownResult("CMD_FAILURE"), err
 	}
 
 	var total, used uint64
@@ -88,7 +88,7 @@ func (c *Command) Run(check.Check) (check.Result, error) {
 		resultState = check.StateOk
 	}
 
-	return *check.NewResult(resultState, resultReasonCode, resultMetrics), nil
+	return check.NewResult(resultState, resultReasonCode, resultMetrics), nil
 }
 
 func (c *Command) getOids() []string {

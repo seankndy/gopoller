@@ -46,7 +46,7 @@ var (
 	DefaultPinger = &ProBingPinger{}
 )
 
-func (c *Command) Run(check.Check) (check.Result, error) {
+func (c *Command) Run(*check.Check) (*check.Result, error) {
 	var pinger Pinger
 	if c.pinger != nil {
 		pinger = c.pinger
@@ -56,7 +56,7 @@ func (c *Command) Run(check.Check) (check.Result, error) {
 
 	stats, err := pinger.Run(c)
 	if err != nil {
-		return *check.MakeUnknownResult("CMD_FAILURE"), err
+		return check.MakeUnknownResult("CMD_FAILURE"), err
 	}
 
 	avgMs := float64(stats.AvgRtt.Microseconds()) / float64(time.Microsecond)
@@ -87,7 +87,7 @@ func (c *Command) Run(check.Check) (check.Result, error) {
 		state = check.StateOk
 	}
 
-	return *check.NewResult(state, reasonCode, []check.ResultMetric{
+	return check.NewResult(state, reasonCode, []check.ResultMetric{
 		{Label: "avg", Value: fmt.Sprintf("%.2f", avgMs)},
 		{Label: "jitter", Value: fmt.Sprintf("%.2f", jitterMs)},
 		{Label: "loss", Value: fmt.Sprintf("%.2f", lossPerc)},

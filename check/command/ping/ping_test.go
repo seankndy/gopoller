@@ -19,7 +19,7 @@ func TestResultMetricsReturnedProperly(t *testing.T) {
 
 	cmd := &Command{}
 	cmd.SetPinger(mockPinger)
-	result, err := cmd.Run(check.Check{})
+	result, err := cmd.Run(&check.Check{})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -133,7 +133,7 @@ func TestThresholdsTripStatesProperly(t *testing.T) {
 
 			tt.cmd.SetPinger(mockPinger)
 
-			result, err := tt.cmd.Run(check.Check{})
+			result, err := tt.cmd.Run(&check.Check{})
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}
@@ -155,7 +155,7 @@ func TestReturnsUnknownResultAndErrOnPingerError(t *testing.T) {
 
 	cmd := &Command{}
 	cmd.SetPinger(mockPinger)
-	result, err := cmd.Run(check.Check{})
+	result, err := cmd.Run(&check.Check{})
 	if err == nil {
 		t.Error("expected error, got nil")
 	} else if err.Error() != "some error happened" {

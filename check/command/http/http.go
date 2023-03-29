@@ -25,7 +25,7 @@ type Command struct {
 	CritRespTimeThreshold time.Duration
 }
 
-func (c *Command) Run(check.Check) (check.Result, error) {
+func (c *Command) Run(*check.Check) (*check.Result, error) {
 	client := &http.Client{Transport: &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: c.SkipSslVerify},
 	}}
@@ -34,7 +34,7 @@ func (c *Command) Run(check.Check) (check.Result, error) {
 	defer cancel()
 	request, err := http.NewRequestWithContext(ctx, c.ReqMethod, c.ReqUrl, strings.NewReader(c.ReqBody))
 	if err != nil {
-		return *check.MakeUnknownResult("CMD_FAILURE"), err
+		return check.MakeUnknownResult("CMD_FAILURE"), err
 	}
 
 	startTime := time.Now()
@@ -43,12 +43,12 @@ func (c *Command) Run(check.Check) (check.Result, error) {
 	if err != nil {
 		var tlsVerifyErr *tls.CertificateVerificationError
 		if errors.Is(err, context.DeadlineExceeded) {
-			return *check.NewResult(check.StateCrit, "CONNECTION_ERROR", nil), err
+			return check.NewResult(check.StateCrit, "CONNECTION_ERROR", nil), err
 		} else if errors.As(err, &tlsVerifyErr) {
-			return *check.NewResult(check.StateCrit, "HTTP_SSL_FAILURE", nil), err
+			return check.NewResult(check.StateCrit, "HTTP_SSL_FAILURE", nil), err
 		}
 
-		return *check.MakeUnknownResult("CMD_FAILURE"), err
+		return check.MakeUnknownResult("CMD_FAILURE"), err
 	}
 	defer response.Body.Close()
 
@@ -76,5 +76,5 @@ func (c *Command) Run(check.Check) (check.Result, error) {
 		resultReasonCode = ""
 	}
 
-	return *check.NewResult(resultState, resultReasonCode, resultMetrics), nil
+	return check.NewResult(resultState, resultReasonCode, resultMetrics), nil
 }

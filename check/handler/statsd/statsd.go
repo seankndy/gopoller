@@ -21,7 +21,7 @@ func (h *Handler) Mutate(*check.Check, *check.Result, *check.Incident) {
 	return
 }
 
-func (h *Handler) Process(chk check.Check, newResult check.Result, _ *check.Incident) (err error) {
+func (h *Handler) Process(chk *check.Check, newResult *check.Result, _ *check.Incident) (err error) {
 	if newResult.Metrics == nil {
 		return
 	}
@@ -40,7 +40,7 @@ func (h *Handler) Process(chk check.Check, newResult check.Result, _ *check.Inci
 		return
 	}
 
-	msg := h.buildProtocolMessage(&chk, &newResult)
+	msg := h.buildProtocolMessage(chk, newResult)
 	var written int
 	for written < len(msg) {
 		var n int

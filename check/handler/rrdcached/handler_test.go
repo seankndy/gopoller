@@ -14,8 +14,8 @@ func TestDoesNotConnectToRrdCacheDWhenGetRrdFileDefsNil(t *testing.T) {
 	mockRrdClient := MockRrdClient{}
 	h := NewHandler(&mockRrdClient, nil)
 
-	chk := check.Check{}
-	result := *check.NewResult(check.StateOk, "", nil)
+	chk := &check.Check{}
+	result := check.NewResult(check.StateOk, "", nil)
 
 	h.Process(chk, result, nil)
 
@@ -26,12 +26,12 @@ func TestDoesNotConnectToRrdCacheDWhenGetRrdFileDefsNil(t *testing.T) {
 
 func TestDoesNotConnectToRrdCacheDWhenGetRrdFilesReturnsNil(t *testing.T) {
 	mockRrdClient := MockRrdClient{}
-	h := NewHandler(&mockRrdClient, func(check.Check, check.Result) []RrdFileDef {
+	h := NewHandler(&mockRrdClient, func(*check.Check, *check.Result) []RrdFileDef {
 		return nil
 	})
 
-	chk := check.Check{}
-	result := *check.NewResult(check.StateOk, "", nil)
+	chk := &check.Check{}
+	result := check.NewResult(check.StateOk, "", nil)
 
 	h.Process(chk, result, nil)
 
@@ -42,14 +42,14 @@ func TestDoesNotConnectToRrdCacheDWhenGetRrdFilesReturnsNil(t *testing.T) {
 
 func TestConnectsToRrdCacheDWhenGetRrdFilesReturnsData(t *testing.T) {
 	mockRrdClient := MockRrdClient{}
-	h := NewHandler(&mockRrdClient, func(check.Check, check.Result) []RrdFileDef {
+	h := NewHandler(&mockRrdClient, func(*check.Check, *check.Result) []RrdFileDef {
 		return []RrdFileDef{
 			{Filename: "/foo.rrd"},
 		}
 	})
 
-	chk := check.Check{}
-	result := *check.NewResult(check.StateOk, "", nil)
+	chk := &check.Check{}
+	result := check.NewResult(check.StateOk, "", nil)
 
 	h.Process(chk, result, nil)
 
@@ -60,7 +60,7 @@ func TestConnectsToRrdCacheDWhenGetRrdFilesReturnsData(t *testing.T) {
 
 func TestOnlyCreatesRrdFilesThatDontExist(t *testing.T) {
 	mockRrdClient := MockRrdClient{}
-	h := NewHandler(&mockRrdClient, func(check.Check, check.Result) []RrdFileDef {
+	h := NewHandler(&mockRrdClient, func(*check.Check, *check.Result) []RrdFileDef {
 		return []RrdFileDef{
 			{Filename: "/foo1.rrd"},
 			{Filename: "/foo2.rrd"},
@@ -68,8 +68,8 @@ func TestOnlyCreatesRrdFilesThatDontExist(t *testing.T) {
 		}
 	})
 
-	chk := check.Check{}
-	result := *check.NewResult(check.StateOk, "", nil)
+	chk := &check.Check{}
+	result := check.NewResult(check.StateOk, "", nil)
 
 	// this will return a successful response for the file /foo1.rrd only
 	lastMock = func(file string) (time.Time, error) {
@@ -93,7 +93,7 @@ func TestOnlyCreatesRrdFilesThatDontExist(t *testing.T) {
 
 func TestIssuesCorrectBatchUpdateCommands(t *testing.T) {
 	mockRrdClient := MockRrdClient{}
-	h := NewHandler(&mockRrdClient, func(check.Check, check.Result) []RrdFileDef {
+	h := NewHandler(&mockRrdClient, func(*check.Check, *check.Result) []RrdFileDef {
 		return []RrdFileDef{
 			{
 				Filename: "/foo1.rrd",
@@ -125,8 +125,8 @@ func TestIssuesCorrectBatchUpdateCommands(t *testing.T) {
 	})
 
 	tm := time.Unix(556549200, 0)
-	chk := check.Check{}
-	result := check.Result{
+	chk := &check.Check{}
+	result := &check.Result{
 		State:      check.StateOk,
 		ReasonCode: "",
 		Metrics: []check.ResultMetric{

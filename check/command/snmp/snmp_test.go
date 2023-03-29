@@ -17,7 +17,7 @@ func TestReturnsUnknownResultAndErrorOnSnmpGetFailure(t *testing.T) {
 		*NewOidMonitor("1.2.3.4.5.6.7.8", "foo"),
 	}}
 	cmd.SetGetter(getterMock)
-	result, err := cmd.Run(check.Check{})
+	result, err := cmd.Run(&check.Check{})
 
 	assert.Equal(t, check.StateUnknown, result.State, "invalid result state")
 	assert.NotNil(t, err)
@@ -49,7 +49,7 @@ func TestReturnsResultWithMetricsFromSnmp(t *testing.T) {
 		*NewOidMonitor("1.2.3.4.5.6.7.8.9.1", "foo3"),
 	}}
 	cmd.SetGetter(getterMock)
-	result, _ := cmd.Run(check.Check{})
+	result, _ := cmd.Run(&check.Check{})
 
 	assert.Equal(t, []check.ResultMetric{
 		{
@@ -88,7 +88,7 @@ func TestPostProcessValuesAreAppliedToGauges(t *testing.T) {
 		},
 	}}
 	cmd.SetGetter(getterMock)
-	result, _ := cmd.Run(check.Check{})
+	result, _ := cmd.Run(&check.Check{})
 	assert.Equal(t, []check.ResultMetric{
 		{
 			Label: "foo1",
@@ -126,7 +126,7 @@ func TestPostProcessValuesAreNotAppliedToCounters(t *testing.T) {
 		},
 	}}
 	cmd.SetGetter(getterMock)
-	result, _ := cmd.Run(check.Check{})
+	result, _ := cmd.Run(&check.Check{})
 
 	assert.Equal(t, []check.ResultMetric{
 		{
@@ -363,7 +363,7 @@ func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 
 			cmd := &Command{OidMonitors: tt.oidMonitors}
 			cmd.SetGetter(getterMock)
-			result, _ := cmd.Run(tt.check)
+			result, _ := cmd.Run(&tt.check)
 
 			assert.Equal(t, tt.wantResultState, result.State, "invalid result state")
 			assert.Equal(t, tt.wantReasonCode, result.ReasonCode, "invalid result reason code")

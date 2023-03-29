@@ -13,10 +13,10 @@ type Handler struct {
 
 	// GetRrdFileDefs should return a slice of RrdFileDefs defining the RRD file specifications for a given Check and
 	// it's Result data.
-	GetRrdFileDefs func(check.Check, check.Result) []RrdFileDef
+	GetRrdFileDefs func(*check.Check, *check.Result) []RrdFileDef
 }
 
-func NewHandler(client Client, getRrdFileDefs func(check.Check, check.Result) []RrdFileDef) *Handler {
+func NewHandler(client Client, getRrdFileDefs func(*check.Check, *check.Result) []RrdFileDef) *Handler {
 	return &Handler{
 		client:         client,
 		GetRrdFileDefs: getRrdFileDefs,
@@ -27,7 +27,7 @@ func (h *Handler) Mutate(check *check.Check, result *check.Result, newIncident *
 	return
 }
 
-func (h *Handler) Process(check check.Check, result check.Result, newIncident *check.Incident) (err error) {
+func (h *Handler) Process(check *check.Check, result *check.Result, newIncident *check.Incident) (err error) {
 	getRrdFileDefs := h.GetRrdFileDefs
 	if getRrdFileDefs == nil {
 		return
@@ -96,7 +96,7 @@ type RrdFileDef struct {
 	DataSourceToMetricMappings map[string]string
 }
 
-func buildUpdateCommands(rrdFileDefs []RrdFileDef, result check.Result) []*Cmd {
+func buildUpdateCommands(rrdFileDefs []RrdFileDef, result *check.Result) []*Cmd {
 	var updateCmds []*Cmd
 	for _, rrdFile := range rrdFileDefs {
 		var dsValues []string

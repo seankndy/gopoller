@@ -48,7 +48,7 @@ var (
 	DefaultClient = &TextProtoSmtp{}
 )
 
-func (c *Command) Run(check.Check) (result check.Result, err error) {
+func (c *Command) Run(*check.Check) (result *check.Result, err error) {
 	var client Client
 	if c.client != nil {
 		client = c.client
@@ -61,10 +61,10 @@ func (c *Command) Run(check.Check) (result check.Result, err error) {
 		var notReadyErr *NotReadyErr
 		if errors.As(err, &notReadyErr) {
 			client.Close()
-			return *check.NewResult(check.StateCrit, "SMTP_NOT_READY", nil), err
+			return check.NewResult(check.StateCrit, "SMTP_NOT_READY", nil), err
 		}
 
-		return *check.NewResult(check.StateCrit, "CONNECTION_ERROR", nil), err
+		return check.NewResult(check.StateCrit, "CONNECTION_ERROR", nil), err
 	}
 	defer func() {
 		errC := client.Close()
@@ -76,9 +76,9 @@ func (c *Command) Run(check.Check) (result check.Result, err error) {
 	actualResponseCode, respTime, err := client.Cmd(c.Send)
 	if err != nil {
 		if errors.Is(err, os.ErrDeadlineExceeded) {
-			return *check.NewResult(check.StateCrit, "CONNECTION_ERROR", nil), err
+			return check.NewResult(check.StateCrit, "CONNECTION_ERROR", nil), err
 		}
-		return *check.MakeUnknownResult("CMD_FAILURE"), err
+		return check.MakeUnknownResult("CMD_FAILURE"), err
 	}
 	respMs := float64(respTime.Microseconds()) / float64(time.Microsecond)
 
@@ -106,5 +106,5 @@ func (c *Command) Run(check.Check) (result check.Result, err error) {
 		resultReasonCode = ""
 	}
 
-	return *check.NewResult(resultState, resultReasonCode, resultMetrics), nil
+	return check.NewResult(resultState, resultReasonCode, resultMetrics), nil
 }

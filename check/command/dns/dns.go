@@ -32,7 +32,7 @@ type Command struct {
 	CritRespTimeThreshold time.Duration
 }
 
-func (c *Command) Run(chk check.Check) (check.Result, error) {
+func (c *Command) Run(*check.Check) (*check.Result, error) {
 	r := &net.Resolver{
 		PreferGo: true,
 		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
@@ -73,11 +73,11 @@ func (c *Command) Run(chk check.Check) (check.Result, error) {
 		var dnsErr *net.DNSError
 		if errors.As(err, &dnsErr) {
 			if dnsErr.Timeout() {
-				return *check.NewResult(check.StateCrit, "CONNECTION_TIMEOUT", nil), nil
+				return check.NewResult(check.StateCrit, "CONNECTION_TIMEOUT", nil), nil
 			}
 		}
 
-		return *check.NewResult(check.StateUnknown, "CMD_FAILURE", nil), err
+		return check.NewResult(check.StateUnknown, "CMD_FAILURE", nil), err
 	}
 
 	respTime := time.Now().Sub(startTime)
@@ -124,5 +124,5 @@ func (c *Command) Run(chk check.Check) (check.Result, error) {
 		resultReasonCode = ""
 	}
 
-	return *check.NewResult(resultState, resultReasonCode, resultMetrics), nil
+	return check.NewResult(resultState, resultReasonCode, resultMetrics), nil
 }

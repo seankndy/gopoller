@@ -20,7 +20,7 @@ func TestResultMetricsReturnedProperly(t *testing.T) {
 		ExpectedResponseCode: 250,
 	}
 	cmd.SetClient(mockClient)
-	result, err := cmd.Run(check.Check{})
+	result, err := cmd.Run(&check.Check{})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -49,7 +49,7 @@ func TestReturnsNotReadyResultWhenConnectReturnsNotReadyErr(t *testing.T) {
 		ExpectedResponseCode: 250,
 	}
 	cmd.SetClient(mockClient)
-	result, err := cmd.Run(check.Check{})
+	result, err := cmd.Run(&check.Check{})
 
 	mock.AssertExpectationsForObjects(t, mockClient)
 
