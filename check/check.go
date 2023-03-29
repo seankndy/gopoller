@@ -172,7 +172,7 @@ func (c *Check) runResultHandlerProcessing(result Result, newIncident *Incident)
 				if t.Kind() == reflect.Ptr {
 					t = t.Elem()
 				}
-				errorCh <- fmt.Errorf("error in handler '%s': %v", t.Name(), err)
+				errorCh <- fmt.Errorf("error in handler '%s': %v", t.PkgPath()+"."+t.Name(), err)
 			}
 		}(h)
 	}
