@@ -144,9 +144,9 @@ func (c *Check) Debugf(format string, args ...any) {
 		formatPrefix := fmt.Sprintf("[ID:%s] ", c.Id)
 
 		// get the caller's information
-		pc, file, line, ok := runtime.Caller(1)
+		pc, _, _, ok := runtime.Caller(1)
 		if ok {
-			formatPrefix = fmt.Sprintf("[%s(%d).%s] ", file, line, runtime.FuncForPC(pc).Name())
+			formatPrefix += fmt.Sprintf("[%s] ", file, line, runtime.FuncForPC(pc).Name())
 		}
 
 		c.debugLogger.Debugf(formatPrefix+format, args...)
