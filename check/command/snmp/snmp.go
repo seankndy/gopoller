@@ -79,14 +79,14 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 		oidMonitorsByOid[c.OidMonitors[k].Oid] = &c.OidMonitors[k]
 	}
 
-	chk.Debug("oid(s) to fetch: %s", rawOids)
+	chk.Debugf("oid(s) to fetch: %s", rawOids)
 
 	objects, err := getter.Get(&c.Host, rawOids)
 	if err != nil {
 		return check.MakeUnknownResult("CMD_FAILURE"), err
 	}
 
-	chk.Debug("objects returned: %s", objects)
+	chk.Debugf("objects returned: %s", objects)
 
 	var resultMetrics []check.ResultMetric
 	resultState := check.StateUnknown
