@@ -1,6 +1,7 @@
 package snmp
 
 import (
+	"fmt"
 	"github.com/gosnmp/gosnmp"
 	"time"
 )
@@ -42,6 +43,10 @@ func (c *GoSnmpGetter) Get(host *Host, oids []string) ([]Object, error) {
 				Oid:   v.Name,
 			})
 		}
+	}
+
+	if len(oids) > 0 && len(objects) == 0 {
+		return nil, fmt.Errorf("no snmp objects returned from host")
 	}
 
 	return objects, nil

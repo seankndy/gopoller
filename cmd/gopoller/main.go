@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/seankndy/gopoller/check"
-	"github.com/seankndy/gopoller/check/command/ping"
+	"github.com/seankndy/gopoller/check/command/snmp"
 	"github.com/seankndy/gopoller/check/handler/dummy"
 	"github.com/seankndy/gopoller/memqueue"
 	"github.com/seankndy/gopoller/server"
@@ -19,37 +19,39 @@ func main() {
 
 	checkQueue := memqueue.NewQueue()
 
-	lastCheck1 := time.Now().Add(-100 * time.Second)
-	check1 := check.New(
-		"check1",
-		check.WithCommand(&ping.Command{
-			Addr:                    "10.17.96.34",
-			Count:                   5,
-			Interval:                100 * time.Millisecond,
-			Size:                    64,
-			PacketLossWarnThreshold: 90,
-			PacketLossCritThreshold: 95,
-			AvgRttWarnThreshold:     20 * time.Millisecond,
-			AvgRttCritThreshold:     50 * time.Millisecond,
-		}),
-		check.WithPeriodicSchedule(10),
-		check.WithHandlers([]check.Handler{&dummy.Handler{}}),
-	)
-	check1.LastCheck = &lastCheck1
-	checkQueue.Enqueue(check1)
 	/*
-		lastCheck2 := time.Now().Add(-90 * time.Second)
-		check2 := check.New(
-			"check2",
-			check.WithCommand(snmp.NewCommand("209.193.82.100", "public", []snmp.OidMonitor{
-				*snmp.NewOidMonitor(".1.3.6.1.2.1.2.2.1.7.554", "ifAdminStatus"),
-			})),
+		lastCheck1 := time.Now().Add(-100 * time.Second)
+		check1 := check.New(
+			"check1",
+			check.WithCommand(&ping.Command{
+				Addr:                    "10.17.96.34",
+				Count:                   5,
+				Interval:                100 * time.Millisecond,
+				Size:                    64,
+				PacketLossWarnThreshold: 90,
+				PacketLossCritThreshold: 95,
+				AvgRttWarnThreshold:     20 * time.Millisecond,
+				AvgRttCritThreshold:     50 * time.Millisecond,
+			}),
 			check.WithPeriodicSchedule(10),
 			check.WithHandlers([]check.Handler{&dummy.Handler{}}),
 		)
-		check2.LastCheck = &lastCheck2
-		checkQueue.Enqueue(check2)
+		check1.LastCheck = &lastCheck1
+		checkQueue.Enqueue(check1)
+	*/
+	lastCheck2 := time.Now().Add(-90 * time.Second)
+	check2 := check.New(
+		"check2",
+		check.WithCommand(snmp.NewCommand("209.193.82.89", "visionary", []snmp.OidMonitor{
+			*snmp.NewOidMonitor(".1.3.6.1.2.1.31.1.1.1.10.31", "ifHCOutOctets"),
+		})),
+		check.WithPeriodicSchedule(10),
+		check.WithHandlers([]check.Handler{&dummy.Handler{}}),
+	)
+	check2.LastCheck = &lastCheck2
+	checkQueue.Enqueue(check2)
 
+	/*
 		check3 := check.New(
 			"check3",
 			check.WithCommand(&dns.Command{
