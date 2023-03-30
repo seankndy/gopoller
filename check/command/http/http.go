@@ -26,9 +26,15 @@ type Command struct {
 }
 
 func (c *Command) Run(chk *check.Check) (*check.Result, error) {
-	client := &http.Client{Transport: &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: c.SkipSslVerify},
-	}}
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: c.SkipSslVerify},
+		},
+		// don't follow redirects
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), c.ReqTimeout)
 	defer cancel()
