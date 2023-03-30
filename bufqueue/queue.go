@@ -96,23 +96,31 @@ func (q *Queue) runCheckEnqueuer(ctx context.Context) {
 			select {
 			case <-ctx.Done():
 				ticker.Stop()
+				// enqueue the pending-enqueuement checks
+				q.enqueuePending()
+				// enqueue the checks in the underlying queue that never ran
+				q.CheckEnqueuer.Enqueue(q.queue.All())
 				return
 			case <-ticker.C:
-				q.mu.Lock()
-				chks := q.pendingEnqueued
-				if len(chks) > 0 {
-					// clear pendingEnqueued by creating a new slice allocation. pre-allocate half the checks we just
-					// had to reduce memory allocations required as the queue fills
-					q.pendingEnqueued = make([]*check.Check, 0, len(chks)/2)
-				}
-				q.mu.Unlock()
-
-				if len(chks) == 0 {
-					return
-				}
-
-				q.CheckEnqueuer.Enqueue(chks)
+				q.enqueuePending()
 			}
 		}
 	}()
+}
+
+func (q *Queue) enqueuePending() {
+	q.mu.Lock()
+	chks := q.pendingEnqueued
+	if len(chks) > 0 {
+		// clear pendingEnqueued by creating a new slice allocation. pre-allocate half the checks we just
+		// had to reduce memory allocations required as the queue fills
+		q.pendingEnqueued = make([]*check.Check, 0, len(chks)/2)
+	}
+	q.mu.Unlock()
+
+	if len(chks) == 0 {
+		return
+	}
+
+	q.CheckEnqueuer.Enqueue(chks)
 }

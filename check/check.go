@@ -60,6 +60,10 @@ type Check struct {
 	// Debugf() method with debugging information.  This is generally nil unless
 	// you want to debug a particular Check.
 	debugLogger debugLogger
+
+	// Executed is true when the Check has had Execute() called on it.  You should
+	// set this back to false prior to queueing it again.
+	Executed bool
 }
 
 type debugLogger interface {
@@ -156,6 +160,8 @@ func (c *Check) Debugf(format string, args ...any) {
 // Execute executes a Check's Command followed by its Handlers.  It then sets
 // the Incident (if there is one), LastCheck and LastResult fields on the Check.
 func (c *Check) Execute() error {
+	c.Executed = true
+
 	var result *Result
 	var err error
 	if c.Command == nil {

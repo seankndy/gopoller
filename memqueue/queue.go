@@ -26,6 +26,7 @@ func NewQueue() *Queue {
 }
 
 func (m *Queue) Enqueue(chk *check.Check) {
+	chk.Executed = false
 	priority := chk.DueAt().Unix()
 
 	m.Lock()
