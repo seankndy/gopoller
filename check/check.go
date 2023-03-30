@@ -156,11 +156,13 @@ func (c *Check) Debugf(format string, args ...any) {
 // Execute executes a Check's Command followed by its Handlers.  It then sets
 // the Incident (if there is one), LastCheck and LastResult fields on the Check.
 func (c *Check) Execute() error {
+	var result *Result
+	var err error
 	if c.Command == nil {
-		return errors.New("no command to execute")
+		result, err = MakeUnknownResult("CMD_FAILURE"), errors.New("command not defined in check")
+	} else {
+		result, err = c.Command.Run(c)
 	}
-
-	result, err := c.Command.Run(c)
 
 	newIncident := c.makeNewIncidentIfJustified(result)
 	c.resolveOrDiscardPreviousIncident(result, newIncident)
