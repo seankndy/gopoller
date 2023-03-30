@@ -53,10 +53,13 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 	}
 	defer response.Body.Close()
 
+	respMs := fmt.Sprintf("%.3f", float64(respTime.Microseconds())/float64(time.Microsecond))
+	chk.Debugf("resp=%.2f", respMs)
+
 	resultMetrics := []check.ResultMetric{
 		{
 			Label: "resp",
-			Value: fmt.Sprintf("%.3f", float64(respTime.Microseconds())/float64(time.Microsecond)),
+			Value: respMs,
 			Type:  check.ResultMetricGauge,
 		},
 	}

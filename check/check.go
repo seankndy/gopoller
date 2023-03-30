@@ -170,7 +170,10 @@ func (c *Check) Execute() error {
 		result, err = c.Command.Run(c)
 	}
 
+	c.Debugf("result-state=%s result-reason-code=%s result-metrics=%d result-time=%v", result.State.String(), result.ReasonCode, len(result.Metrics), result.Time)
+
 	newIncident := c.makeNewIncidentIfJustified(result)
+	c.Debugf("new-incident=%v", newIncident != nil)
 	c.resolveOrDiscardPreviousIncident(result, newIncident)
 
 	c.runResultHandlerMutations(result, newIncident)
@@ -251,9 +254,11 @@ func (c *Check) resolveOrDiscardPreviousIncident(newResult *Result, newIncident 
 	if c.Incident != nil && (newResult.State == StateOk || newIncident != nil) {
 		if c.Incident.Resolved == nil {
 			// resolve it since we are now OK or have new incident
+			c.Debugf("resolving previous incident")
 			c.Incident.Resolve()
 		} else {
 			// already resolved(old incident), discard it
+			c.Debugf("discarding previous incident")
 			c.Incident = nil
 		}
 	}
