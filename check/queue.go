@@ -5,4 +5,5 @@ type Queue interface {
 	Enqueue(chk *Check)
 	Dequeue() *Check
 	Count() uint64
+	Flush()
 }

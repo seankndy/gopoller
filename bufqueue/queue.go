@@ -87,6 +87,15 @@ func (q *Queue) Count() uint64 {
 	return q.queue.Count()
 }
 
+func (q *Queue) Flush() {
+	// enqueue the pending-enqueuement checks
+	q.enqueuePending()
+	// enqueue the checks in the underlying queue that never ran
+	chks := q.queue.All()
+	q.queue.Flush()
+	q.CheckEnqueuer.Enqueue(chks)
+}
+
 // runCheckEnqueuer kicks off goroutine to periodically call the CheckEnqueuer
 func (q *Queue) runCheckEnqueuer(ctx context.Context) {
 	ticker := time.NewTicker(q.CheckEnqueuerInterval)
@@ -96,10 +105,6 @@ func (q *Queue) runCheckEnqueuer(ctx context.Context) {
 			select {
 			case <-ctx.Done():
 				ticker.Stop()
-				// enqueue the pending-enqueuement checks
-				q.enqueuePending()
-				// enqueue the checks in the underlying queue that never ran
-				q.CheckEnqueuer.Enqueue(q.queue.All())
 				return
 			case <-ticker.C:
 				q.enqueuePending()
