@@ -57,7 +57,7 @@ func (h *Handler) Process(chk *check.Check, newResult *check.Result, _ *check.In
 func (h *Handler) buildProtocolMessage(chk *check.Check, result *check.Result) string {
 	var metricPrefix string
 	if h.MetricPrefix != nil {
-		metricPrefix = strings.TrimRight(h.MetricPrefix(chk, result), ".")
+		metricPrefix = strings.TrimRight(strings.ToLower(h.MetricPrefix(chk, result)), ".")
 	}
 
 	var msg strings.Builder
