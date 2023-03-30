@@ -64,7 +64,7 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 	jitterMs := float64(stats.StdDevRtt.Microseconds()) / float64(time.Microsecond)
 	lossPerc := stats.PacketLoss
 
-	chk.Debugf("avg=%.2f, jitter=%.2f, loss%%=%.2f", avgMs, jitterMs, lossPerc)
+	chk.Debugf("avg=%.3f, jitter=%.3f, loss%%=%.2f", avgMs, jitterMs, lossPerc)
 
 	var state check.ResultState
 	var reasonCode string

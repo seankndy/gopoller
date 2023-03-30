@@ -170,7 +170,8 @@ func (c *Check) Execute() error {
 		result, err = c.Command.Run(c)
 	}
 
-	c.Debugf("result-state=%s result-reason-code=%s result-metrics=%d result-time=%v", result.State.String(), result.ReasonCode, len(result.Metrics), result.Time)
+	c.Debugf("result-state=%s result-reason-code=%s result-metrics=%d result-time=%d",
+		result.State.String(), result.ReasonCode, len(result.Metrics), result.Time.Unix())
 
 	newIncident := c.makeNewIncidentIfJustified(result)
 	c.Debugf("new-incident=%v", newIncident != nil)

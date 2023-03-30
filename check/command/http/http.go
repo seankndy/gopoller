@@ -37,7 +37,7 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 		return check.MakeUnknownResult("CMD_FAILURE"), err
 	}
 
-	chk.Debugf("sending %s request to %s with body %s", c.ReqMethod, c.ReqUrl, c.ReqBody)
+	chk.Debugf("sending %s request to %s with body \"%s\"", c.ReqMethod, c.ReqUrl, c.ReqBody)
 	startTime := time.Now()
 	response, err := client.Do(request)
 	respTime := time.Now().Sub(startTime)
@@ -53,13 +53,13 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 	}
 	defer response.Body.Close()
 
-	respMs := fmt.Sprintf("%.3f", float64(respTime.Microseconds())/float64(time.Microsecond))
-	chk.Debugf("resp=%.2f", respMs)
+	respMs := float64(respTime.Microseconds()) / float64(time.Microsecond)
+	chk.Debugf("resp=%.3f", respMs)
 
 	resultMetrics := []check.ResultMetric{
 		{
 			Label: "resp",
-			Value: respMs,
+			Value: fmt.Sprintf("%.3f", respMs),
 			Type:  check.ResultMetricGauge,
 		},
 	}

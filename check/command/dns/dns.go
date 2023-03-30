@@ -88,7 +88,7 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 	respTime := time.Now().Sub(startTime)
 	respMs := float64(respTime.Microseconds()) / float64(time.Microsecond)
 
-	chk.Debugf("resp=%.2f", respMs)
+	chk.Debugf("resp=%.3f", respMs)
 
 	resultMetrics := []check.ResultMetric{
 		{
