@@ -53,7 +53,7 @@ func (h *Handler) Process(chk *check.Check, result *check.Result, _ *check.Incid
 	}
 	defer func() {
 		errC := client.Close()
-		if err == nil {
+		if errC != nil && err == nil {
 			err = fmt.Errorf("error closing connection to rrdcached: %v", errC)
 		}
 	}()
