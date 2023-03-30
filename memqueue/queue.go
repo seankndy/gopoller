@@ -101,9 +101,9 @@ func (m *Queue) All() []*check.Check {
 	defer m.RUnlock()
 
 	all := make([]*check.Check, m.total)
-	for _, chks := range m.checks {
-		for _, chk := range chks {
-			all = append(all, chk)
+	for i := range m.checks {
+		for j := range m.checks[i] {
+			all = append(all, m.checks[i][j])
 		}
 	}
 
