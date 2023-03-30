@@ -62,6 +62,10 @@ func (h *Handler) buildProtocolMessage(chk *check.Check, result *check.Result) s
 
 	var msg strings.Builder
 	for _, metric := range result.Metrics {
+		if metric.Value == "" {
+			continue
+		}
+
 		if metric.Value[:1] == "-" { // negative number
 			// see https://github.com/statsd/statsd/blob/master/docs/metric_types.md#gauges
 			msg.WriteString(fmt.Sprintf("%s.%s:0|g\n", metricPrefix, metric.Label))
