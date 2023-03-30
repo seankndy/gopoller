@@ -6,6 +6,7 @@ import (
 	"github.com/seankndy/gopoller/check"
 	"github.com/seankndy/gopoller/snmp"
 	"math/big"
+	"strings"
 )
 
 type OidMonitor struct {
@@ -83,6 +84,9 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 
 	objects, err := getter.Get(&c.Host, rawOids)
 	if err != nil {
+		if strings.Contains(err.Error(), "request timeout") {
+			return check.MakeUnknownResult("CONNECTION_ERROR"), nil
+		}
 		return check.MakeUnknownResult("CMD_FAILURE"), err
 	}
 
