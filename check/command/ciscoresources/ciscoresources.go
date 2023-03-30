@@ -59,7 +59,7 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 		case snmp.Uinteger32, snmp.Gauge32:
 			value = int64(obj.Value.(uint32))
 		case snmp.Integer:
-			value = int64(obj.Value.(int32))
+			value = int64(obj.Value.(int))
 		default:
 			chk.Debugf("unsupported snmp object type (non-integer): %v", obj.Type)
 			continue

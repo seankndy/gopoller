@@ -57,7 +57,7 @@ func (c *Command) Run(*check.Check) (*check.Result, error) {
 		case snmp.Counter32, snmp.Uinteger32, snmp.Gauge32:
 			value = uint64(obj.Value.(uint32))
 		case snmp.Integer:
-			value = uint64(obj.Value.(int32))
+			value = uint64(obj.Value.(int))
 		}
 
 		if strings.HasPrefix(obj.Oid, OidPoolAddrTotal) {
