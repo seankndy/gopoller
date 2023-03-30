@@ -82,6 +82,7 @@ func (h *Handler) Process(chk *check.Check, result *check.Result, _ *check.Incid
 		} else {
 			chk.Debugf("rrd file %s exists", rrdFile.Filename)
 		}
+		time.Sleep(50 * time.Millisecond)
 	}
 
 	// update rrd files
