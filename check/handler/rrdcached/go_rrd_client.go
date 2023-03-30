@@ -62,6 +62,10 @@ func (c *GoRrdClient) Last(filename string) (time.Time, error) {
 	return c.client.Last(filename)
 }
 
+func (c *GoRrdClient) Ping() error {
+	return c.client.Ping()
+}
+
 func (c *GoRrdClient) Create(filename string, ds []DS, rra []RRA, step time.Duration) error {
 	var convertedDS []rrd.DS
 	for _, v := range ds {

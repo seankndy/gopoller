@@ -52,7 +52,7 @@ func (h *Handler) Process(chk *check.Check, result *check.Result, _ *check.Incid
 	}()
 
 	rrdFileExists := func(file string) (bool, error) {
-		_, err := h.client.Last(file)
+		_, err = h.client.Last(file)
 		if err != nil {
 			if strings.Contains(err.Error(), "No such file") {
 				return false, nil
@@ -64,25 +64,31 @@ func (h *Handler) Process(chk *check.Check, result *check.Result, _ *check.Incid
 
 	// create rrd files that don't exist
 	for _, rrdFile := range rrdFileDefs {
-		exists, err := rrdFileExists(rrdFile.Filename)
-		if err != nil {
+		var exists bool
+		if exists, err = rrdFileExists(rrdFile.Filename); err != nil {
 			return fmt.Errorf("error checking if rrd file exists: %v", err)
-		}
-		if !exists {
+		} else if !exists {
 			chk.Debugf("rrd file %s does not exist, attempting to create it", rrdFile.Filename)
-			if err := h.client.Create(rrdFile.Filename, rrdFile.DataSources, rrdFile.RoundRobinArchives, rrdFile.Step); err != nil {
+			if err = h.client.Create(rrdFile.Filename, rrdFile.DataSources, rrdFile.RoundRobinArchives, rrdFile.Step); err != nil {
 				return fmt.Errorf("error creating rrd file: %v", err)
 			}
 		} else {
 			chk.Debugf("rrd file %s exists", rrdFile.Filename)
 		}
+
+		err = h.client.Ping()
+		if err != nil {
+			return fmt.Errorf("ping failed: %v", err)
+		}
+
+		time.Sleep(time.Millisecond * 100)
 	}
 
 	// update rrd files
 	if updateCmds := buildUpdateCommands(rrdFileDefs, result); updateCmds != nil {
 		cmdStrings := make([]string, len(updateCmds))
 		for i, uc := range updateCmds {
-			cmdStrings[i] = uc.String()
+			cmdStrings[i] = strings.TrimSpace(uc.String())
 		}
 		chk.Debugf("sending BATCH update: %s", strings.Join(cmdStrings, ", "))
 
