@@ -27,7 +27,7 @@ func (h *Handler) Process(chk *check.Check, newResult *check.Result, _ *check.In
 	}
 
 	dialer := net.Dialer{Timeout: 10 * time.Second}
-	conn, err := dialer.Dial("udp", h.Addr)
+	conn, err := dialer.Dial("udp", fmt.Sprintf("%s:%d", h.Addr, h.Port))
 	if err != nil {
 		return
 	}
