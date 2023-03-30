@@ -32,7 +32,7 @@ type Command struct {
 	CritRespTimeThreshold time.Duration
 }
 
-func (c *Command) Run(*check.Check) (*check.Result, error) {
+func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 	r := &net.Resolver{
 		PreferGo: true,
 		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
@@ -48,14 +48,17 @@ func (c *Command) Run(*check.Check) (*check.Result, error) {
 	startTime := time.Now()
 	switch c.QueryType {
 	case Host:
+		chk.Debugf("sending Host request of %s to %s:%d", c.Query, c.ServerIp, c.ServerPort)
 		resolvedEntries, err = r.LookupHost(context.Background(), c.Query)
 	case CNAME:
+		chk.Debugf("sending CNAME request of %s to %s:%d", c.Query, c.ServerIp, c.ServerPort)
 		var name string
 		name, err = r.LookupCNAME(context.Background(), c.Query)
 		if err != nil {
 			resolvedEntries = append(resolvedEntries, name)
 		}
 	case MX:
+		chk.Debugf("sending MX request of %s to %s:%d", c.Query, c.ServerIp, c.ServerPort)
 		var records []*net.MX
 		records, err = r.LookupMX(context.Background(), c.Query)
 		if err != nil {
@@ -64,8 +67,10 @@ func (c *Command) Run(*check.Check) (*check.Result, error) {
 			}
 		}
 	case TXT:
+		chk.Debugf("sending TXT request of %s to %s:%d", c.Query, c.ServerIp, c.ServerPort)
 		resolvedEntries, err = r.LookupTXT(context.Background(), c.Query)
 	case PTR:
+		chk.Debugf("sending PTR request of %s to %s:%d", c.Query, c.ServerIp, c.ServerPort)
 		resolvedEntries, err = r.LookupAddr(context.Background(), c.Query)
 	}
 
@@ -82,6 +87,8 @@ func (c *Command) Run(*check.Check) (*check.Result, error) {
 
 	respTime := time.Now().Sub(startTime)
 	respMs := float64(respTime.Microseconds()) / float64(time.Microsecond)
+
+	chk.Debugf("resp=%.2f", respMs)
 
 	resultMetrics := []check.ResultMetric{
 		{

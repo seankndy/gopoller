@@ -25,7 +25,7 @@ type Command struct {
 	CritRespTimeThreshold time.Duration
 }
 
-func (c *Command) Run(*check.Check) (*check.Result, error) {
+func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 	client := &http.Client{Transport: &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: c.SkipSslVerify},
 	}}
@@ -37,6 +37,7 @@ func (c *Command) Run(*check.Check) (*check.Result, error) {
 		return check.MakeUnknownResult("CMD_FAILURE"), err
 	}
 
+	chk.Debugf("sending %s request to %s with body %s", c.ReqMethod, c.ReqUrl, c.ReqBody)
 	startTime := time.Now()
 	response, err := client.Do(request)
 	respTime := time.Now().Sub(startTime)

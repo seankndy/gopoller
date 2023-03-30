@@ -46,7 +46,7 @@ var (
 	DefaultPinger = &ProBingPinger{}
 )
 
-func (c *Command) Run(*check.Check) (*check.Result, error) {
+func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 	var pinger Pinger
 	if c.pinger != nil {
 		pinger = c.pinger
@@ -54,6 +54,7 @@ func (c *Command) Run(*check.Check) (*check.Result, error) {
 		pinger = DefaultPinger
 	}
 
+	chk.Debugf("sending %d pings to %s", c.Count, c.Addr)
 	stats, err := pinger.Run(c)
 	if err != nil {
 		return check.MakeUnknownResult("CMD_FAILURE"), err
@@ -62,6 +63,8 @@ func (c *Command) Run(*check.Check) (*check.Result, error) {
 	avgMs := float64(stats.AvgRtt.Microseconds()) / float64(time.Microsecond)
 	jitterMs := float64(stats.StdDevRtt.Microseconds()) / float64(time.Microsecond)
 	lossPerc := stats.PacketLoss
+
+	chk.Debugf("avg=%.2f, jitter=%.2f, loss%%=%.2f", avgMs, jitterMs, lossPerc)
 
 	var state check.ResultState
 	var reasonCode string
