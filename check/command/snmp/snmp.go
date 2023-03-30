@@ -155,11 +155,9 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 				resultState, resultReason = oidMonitor.determineResultStateAndReasonFromResultValue(value)
 			}
 
-			if oidMonitor.PostProcessValue != 1.0 {
-				// multiply object value by the post-process value, but only for non-counter types
-				valueF := big.NewFloat(0).SetPrec(uint(value.BitLen())).SetInt(value)
-				resultMetricValue = valueF.Mul(valueF, big.NewFloat(oidMonitor.PostProcessValue)).Text('f', -1)
-			}
+			// multiply object value by the post-process value, but only for non-counter types
+			valueF := big.NewFloat(0).SetPrec(uint(value.BitLen())).SetInt(value)
+			resultMetricValue = valueF.Mul(valueF, big.NewFloat(oidMonitor.PostProcessValue)).Text('f', -1)
 		}
 
 		resultMetrics = append(resultMetrics, check.ResultMetric{
