@@ -12,7 +12,7 @@ var lastMock func(file string) (time.Time, error)
 
 func TestDoesNotConnectToRrdCacheDWhenGetRrdFileDefsNil(t *testing.T) {
 	mockRrdClient := MockRrdClient{}
-	h := NewHandler(&mockRrdClient, nil)
+	h := NewHandler(func() Client { return &mockRrdClient }, nil)
 
 	chk := &check.Check{}
 	result := check.NewResult(check.StateOk, "", nil)
@@ -26,7 +26,7 @@ func TestDoesNotConnectToRrdCacheDWhenGetRrdFileDefsNil(t *testing.T) {
 
 func TestDoesNotConnectToRrdCacheDWhenGetRrdFilesReturnsNil(t *testing.T) {
 	mockRrdClient := MockRrdClient{}
-	h := NewHandler(&mockRrdClient, func(*check.Check, *check.Result) []RrdFileDef {
+	h := NewHandler(func() Client { return &mockRrdClient }, func(*check.Check, *check.Result) []RrdFileDef {
 		return nil
 	})
 
@@ -42,7 +42,7 @@ func TestDoesNotConnectToRrdCacheDWhenGetRrdFilesReturnsNil(t *testing.T) {
 
 func TestConnectsToRrdCacheDWhenGetRrdFilesReturnsData(t *testing.T) {
 	mockRrdClient := MockRrdClient{}
-	h := NewHandler(&mockRrdClient, func(*check.Check, *check.Result) []RrdFileDef {
+	h := NewHandler(func() Client { return &mockRrdClient }, func(*check.Check, *check.Result) []RrdFileDef {
 		return []RrdFileDef{
 			{Filename: "/foo.rrd"},
 		}
@@ -60,7 +60,7 @@ func TestConnectsToRrdCacheDWhenGetRrdFilesReturnsData(t *testing.T) {
 
 func TestOnlyCreatesRrdFilesThatDontExist(t *testing.T) {
 	mockRrdClient := MockRrdClient{}
-	h := NewHandler(&mockRrdClient, func(*check.Check, *check.Result) []RrdFileDef {
+	h := NewHandler(func() Client { return &mockRrdClient }, func(*check.Check, *check.Result) []RrdFileDef {
 		return []RrdFileDef{
 			{Filename: "/foo1.rrd"},
 			{Filename: "/foo2.rrd"},
@@ -93,7 +93,7 @@ func TestOnlyCreatesRrdFilesThatDontExist(t *testing.T) {
 
 func TestIssuesCorrectBatchUpdateCommands(t *testing.T) {
 	mockRrdClient := MockRrdClient{}
-	h := NewHandler(&mockRrdClient, func(*check.Check, *check.Result) []RrdFileDef {
+	h := NewHandler(func() Client { return &mockRrdClient }, func(*check.Check, *check.Result) []RrdFileDef {
 		return []RrdFileDef{
 			{
 				Filename: "/foo1.rrd",

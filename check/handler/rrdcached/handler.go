@@ -7,18 +7,22 @@ import (
 	"time"
 )
 
+// ClientFactory should return a new RRDCacheD Client which will be called with
+// each invocation of Handler.Process()
+type ClientFactory func() Client
+
 // Handler processes check result metrics and sends them to a rrdcached server.
 type Handler struct {
-	client Client
+	clientFactory ClientFactory
 
 	// GetRrdFileDefs should return a slice of RrdFileDefs defining the RRD file specifications for a given Check and
 	// it's Result data.
 	GetRrdFileDefs func(*check.Check, *check.Result) []RrdFileDef
 }
 
-func NewHandler(client Client, getRrdFileDefs func(*check.Check, *check.Result) []RrdFileDef) *Handler {
+func NewHandler(clientFactory ClientFactory, getRrdFileDefs func(*check.Check, *check.Result) []RrdFileDef) *Handler {
 	return &Handler{
-		client:         client,
+		clientFactory:  clientFactory,
 		GetRrdFileDefs: getRrdFileDefs,
 	}
 }
@@ -39,20 +43,23 @@ func (h *Handler) Process(chk *check.Check, result *check.Result, _ *check.Incid
 		return
 	}
 
+	// create our RRDCacheD client
+	client := h.clientFactory()
+
 	// connect to rrdcached
-	err = h.client.Connect()
+	err = client.Connect()
 	if err != nil {
 		return fmt.Errorf("error connecting to rrdcached: %v", err)
 	}
 	defer func() {
-		errC := h.client.Close()
+		errC := client.Close()
 		if err == nil {
 			err = fmt.Errorf("error closing connection to rrdcached: %v", errC)
 		}
 	}()
 
 	rrdFileExists := func(file string) (bool, error) {
-		_, err = h.client.Last(file)
+		_, err = client.Last(file)
 		if err != nil {
 			if strings.Contains(err.Error(), "No such file") {
 				return false, nil
@@ -69,19 +76,12 @@ func (h *Handler) Process(chk *check.Check, result *check.Result, _ *check.Incid
 			return fmt.Errorf("error checking if rrd file exists: %v", err)
 		} else if !exists {
 			chk.Debugf("rrd file %s does not exist, attempting to create it", rrdFile.Filename)
-			if err = h.client.Create(rrdFile.Filename, rrdFile.DataSources, rrdFile.RoundRobinArchives, rrdFile.Step); err != nil {
+			if err = client.Create(rrdFile.Filename, rrdFile.DataSources, rrdFile.RoundRobinArchives, rrdFile.Step); err != nil {
 				return fmt.Errorf("error creating rrd file: %v", err)
 			}
 		} else {
 			chk.Debugf("rrd file %s exists", rrdFile.Filename)
 		}
-
-		err = h.client.Ping()
-		if err != nil {
-			return fmt.Errorf("ping failed: %v", err)
-		}
-
-		time.Sleep(time.Millisecond * 100)
 	}
 
 	// update rrd files
@@ -92,7 +92,7 @@ func (h *Handler) Process(chk *check.Check, result *check.Result, _ *check.Incid
 		}
 		chk.Debugf("sending BATCH update: %s", strings.Join(cmdStrings, ", "))
 
-		err = h.client.Batch(updateCmds...)
+		err = client.Batch(updateCmds...)
 		if err != nil {
 			return fmt.Errorf("error batch-updating rrd files: %v", err)
 		}

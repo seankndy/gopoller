@@ -14,7 +14,6 @@ type Client interface {
 	ExecCmd(*Cmd) ([]string, error)
 	Batch(...*Cmd) error
 	Last(filename string) (time.Time, error)
-	Ping() error
 	Create(filename string, ds []DS, rra []RRA, step time.Duration) error
 }
 
