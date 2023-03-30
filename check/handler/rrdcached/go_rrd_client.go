@@ -51,9 +51,9 @@ func (c *GoRrdClient) ExecCmd(cmd *Cmd) ([]string, error) {
 }
 
 func (c *GoRrdClient) Batch(cmds ...*Cmd) error {
-	var convertedCmds []*rrd.Cmd
-	for _, cmd := range cmds {
-		convertedCmds = append(convertedCmds, c.convertCmd(cmd))
+	convertedCmds := make([]*rrd.Cmd, len(cmds))
+	for i, cmd := range cmds {
+		convertedCmds[i] = c.convertCmd(cmd)
 	}
 	return c.client.Batch(convertedCmds...)
 }
@@ -63,20 +63,20 @@ func (c *GoRrdClient) Last(filename string) (time.Time, error) {
 }
 
 func (c *GoRrdClient) Create(filename string, ds []DS, rra []RRA, step time.Duration) error {
-	var convertedDS []rrd.DS
-	for _, v := range ds {
-		convertedDS = append(convertedDS, c.convertDS(v))
+	convertedDS := make([]rrd.DS, len(ds))
+	for i, v := range ds {
+		convertedDS[i] = c.convertDS(v)
 	}
-	var convertedRRA []rrd.RRA
-	for _, v := range rra {
-		convertedRRA = append(convertedRRA, c.convertRRA(v))
+	convertedRRA := make([]rrd.RRA, len(rra))
+	for i, v := range rra {
+		convertedRRA[i] = c.convertRRA(v)
 	}
 	return c.client.Create(filename, convertedDS, convertedRRA, rrd.Step(step))
 }
 
 // convertCmd takes a Cmd from this package and converts it to a go-rrd rrd.Cmd
 func (c *GoRrdClient) convertCmd(cmd *Cmd) *rrd.Cmd {
-	return rrd.NewCmd(cmd.GetCmd()).WithArgs(cmd.GetArgs())
+	return rrd.NewCmd(cmd.GetCmd()).WithArgs(cmd.GetArgs()...)
 }
 
 // convertDS takes a DS from this package and converts it to a go-rrd rrd.DS
