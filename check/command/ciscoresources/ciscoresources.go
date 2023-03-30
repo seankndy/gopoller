@@ -16,13 +16,13 @@ type Command struct {
 	getter snmp.Getter
 
 	Host                       snmp.Host
-	PercentCpuWarnThreshold    int64
-	PercentCpuCritThreshold    int64
-	PercentMemoryWarnThreshold int64
-	PercentMemoryCritThreshold int64
+	PercentCpuWarnThreshold    uint64
+	PercentCpuCritThreshold    uint64
+	PercentMemoryWarnThreshold uint64
+	PercentMemoryCritThreshold uint64
 }
 
-func NewCommand(addr, community string, percCpuWarnThreshold, percCpuCritThreshold, percMemWarnThreshold, percMemCritThreshold int64) *Command {
+func NewCommand(addr, community string, percCpuWarnThreshold, percCpuCritThreshold, percMemWarnThreshold, percMemCritThreshold uint64) *Command {
 	return &Command{
 		Host:                       *snmp.NewHost(addr, community),
 		PercentCpuWarnThreshold:    percCpuWarnThreshold,
@@ -52,18 +52,9 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 		return check.MakeUnknownResult("CMD_FAILURE"), fmt.Errorf("expected 3 snmp objects, got %d", len(objects))
 	}
 
-	var cpuPerc, memUsed, memFree int64
+	var cpuPerc, memUsed, memFree uint64
 	for _, obj := range objects {
-		var value int64
-		switch obj.Type {
-		case snmp.Uinteger32, snmp.Gauge32:
-			value = int64(obj.Value.(uint32))
-		case snmp.Integer:
-			value = int64(obj.Value.(int))
-		default:
-			chk.Debugf("unsupported snmp object type (non-integer): %v", obj.Type)
-			continue
-		}
+		value := c.parseInt(obj.Value)
 
 		switch obj.Oid {
 		case OidCpu:
@@ -75,7 +66,7 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 		}
 	}
 
-	memoryPerc := int64(float64(memUsed) / (float64(memFree) + float64(memUsed)) * 100.0)
+	memoryPerc := uint64(float64(memUsed) / (float64(memFree) + float64(memUsed)) * 100.0)
 
 	var resultState check.ResultState
 	var resultReasonCode string
@@ -108,4 +99,31 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 	}
 
 	return check.NewResult(resultState, resultReasonCode, resultMetrics), nil
+}
+
+func (c *Command) parseInt(val any) uint64 {
+	switch value := val.(type) {
+	case int:
+		return uint64(value)
+	case int8:
+		return uint64(value)
+	case int16:
+		return uint64(value)
+	case int32:
+		return uint64(value)
+	case int64:
+		return uint64(value)
+	case uint:
+		return uint64(value)
+	case uint8:
+		return uint64(value)
+	case uint16:
+		return uint64(value)
+	case uint32:
+		return uint64(value)
+	case uint64:
+		return value
+	default:
+		return 0
+	}
 }
