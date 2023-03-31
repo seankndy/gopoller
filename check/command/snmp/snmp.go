@@ -12,10 +12,10 @@ type OidMonitor struct {
 	Oid               string
 	Name              string
 	PostProcessValue  float64
-	WarnMinThreshold  int64
-	CritMinThreshold  int64
-	WarnMaxThreshold  int64
-	CritMaxThreshold  int64
+	WarnMinThreshold  float64
+	CritMinThreshold  float64
+	WarnMaxThreshold  float64
+	CritMaxThreshold  float64
 	WarnMinReasonCode string
 	CritMinReasonCode string
 	WarnMaxReasonCode string
@@ -30,14 +30,14 @@ func NewOidMonitor(oid, name string) *OidMonitor {
 	}
 }
 
-func (o *OidMonitor) determineResultStateAndReasonFromResultValue(value *big.Int) (check.ResultState, string) {
-	if o.CritMinReasonCode != "" && value.Cmp(big.NewInt(o.CritMinThreshold)) < 0 {
+func (o *OidMonitor) determineResultStateAndReasonFromResultValue(value *big.Float) (check.ResultState, string) {
+	if o.CritMinReasonCode != "" && value.Cmp(big.NewFloat(o.CritMinThreshold)) < 0 {
 		return check.StateCrit, o.CritMinReasonCode
-	} else if o.WarnMinReasonCode != "" && value.Cmp(big.NewInt(o.WarnMinThreshold)) < 0 {
+	} else if o.WarnMinReasonCode != "" && value.Cmp(big.NewFloat(o.WarnMinThreshold)) < 0 {
 		return check.StateWarn, o.WarnMinReasonCode
-	} else if o.CritMaxReasonCode != "" && value.Cmp(big.NewInt(o.CritMaxThreshold)) > 0 {
+	} else if o.CritMaxReasonCode != "" && value.Cmp(big.NewFloat(o.CritMaxThreshold)) > 0 {
 		return check.StateCrit, o.CritMaxReasonCode
-	} else if o.WarnMaxReasonCode != "" && value.Cmp(big.NewInt(o.WarnMaxThreshold)) > 0 {
+	} else if o.WarnMaxReasonCode != "" && value.Cmp(big.NewFloat(o.WarnMaxThreshold)) > 0 {
 		return check.StateWarn, o.WarnMaxReasonCode
 	}
 
@@ -89,13 +89,13 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 		return check.MakeUnknownResult("CMD_FAILURE"), err
 	}
 
-	chk.Debugf("objects returned: %s", objects)
-
 	var resultMetrics []check.ResultMetric
 	resultState := check.StateUnknown
 	var resultReason string
 
 	for _, object := range objects {
+		chk.Debugf("got oid=%s value=%v", object.Oid, object.Value)
+
 		oidMonitor := oidMonitorsByOid[object.Oid]
 		if oidMonitor == nil {
 			if object.Oid[:1] == "." {
@@ -107,8 +107,6 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 				fmt.Errorf("snmp.Command.Run(): oid %s could not be found in monitors", object.Oid)
 		}
 
-		value := snmp.ToBigInt(object.Value)
-
 		var resultMetricValue string
 		var resultMetricType check.ResultMetricType
 
@@ -118,6 +116,8 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 		// to the value
 
 		if object.Type == snmp.Counter64 || object.Type == snmp.Counter32 {
+			value := snmp.ToBigInt(object.Value)
+
 			resultMetricType = check.ResultMetricCounter
 			resultMetricValue = value.Text(10)
 
@@ -144,9 +144,20 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 					diff = snmp.CalculateCounterDiff(lastValue, value, 32)
 				}
 
-				resultState, resultReason = oidMonitor.determineResultStateAndReasonFromResultValue(diff)
+				resultState, resultReason = oidMonitor.determineResultStateAndReasonFromResultValue(convertBigIntToBigFloat(diff))
 			}
 		} else {
+			var value *big.Float
+			if strValue, ok := object.Value.(string); ok {
+				strValue = strings.TrimSpace(strValue)
+				value = new(big.Float).SetPrec(64)
+				if _, ok = value.SetString(strValue); !ok {
+					value = big.NewFloat(0)
+				}
+			} else {
+				value = convertBigIntToBigFloat(snmp.ToBigInt(object.Value))
+			}
+
 			resultMetricType = check.ResultMetricGauge
 
 			// if state is still Unknown, check if this snmp object exceeds any thresholds
@@ -155,8 +166,7 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 			}
 
 			// multiply object value by the post-process value, but only for non-counter types
-			valueF := big.NewFloat(0).SetPrec(uint(value.BitLen())).SetInt(value)
-			resultMetricValue = valueF.Mul(valueF, big.NewFloat(oidMonitor.PostProcessValue)).Text('f', -1)
+			resultMetricValue = value.Mul(value, big.NewFloat(oidMonitor.PostProcessValue)).Text('f', -1)
 		}
 
 		resultMetrics = append(resultMetrics, check.ResultMetric{
@@ -180,4 +190,8 @@ func getChecksLastResultMetricByLabel(chk *check.Check, label string) *check.Res
 	}
 
 	return nil
+}
+
+func convertBigIntToBigFloat(bigInt *big.Int) *big.Float {
+	return new(big.Float).SetPrec(uint(bigInt.BitLen())).SetInt(bigInt)
 }
