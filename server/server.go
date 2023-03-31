@@ -93,7 +93,7 @@ func (s *Server) Run(ctx context.Context) {
 			}
 
 			if chk == nil {
-				time.Sleep(250 * time.Millisecond)
+				time.Sleep(1000 * time.Millisecond)
 			}
 		}
 	}()
