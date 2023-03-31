@@ -148,21 +148,31 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 			}
 		} else {
 			var value *big.Float
-			if strValue, ok := object.Value.(string); ok {
-				chk.Debugf("gauge oid %s is a string value (%s)", object.Oid, strValue)
+			var strValue string
+			var isString bool
+			switch val := object.Value.(type) {
+			case string:
+				chk.Debugf("gauge oid %s is a string value (%s)", object.Oid, val)
+				strValue = val
+				isString = true
+			case []byte:
+				chk.Debugf("gauge oid %s is a []byte value (%s), converting to string", object.Oid, val)
+				strValue = string(val)
+				isString = true
+			default:
+				chk.Debugf("gauge value %v is not a string or []byte, assuming it's an integer", object.Value)
+				value = convertBigIntToBigFloat(snmp.ToBigInt(object.Value))
+			}
 
+			if isString {
 				strValue = strings.TrimSpace(strValue)
 				value = new(big.Float).SetPrec(64)
-				if _, ok = value.SetString(strValue); !ok {
+				if _, ok := value.SetString(strValue); !ok {
 					chk.Debugf("failed to parse string (%s) into big float", strValue)
 					value = big.NewFloat(0)
 				} else {
 					chk.Debugf("string (%s) parsed to big float (%s)", strValue, value.String())
 				}
-			} else {
-				chk.Debugf("gauge value %v is not a string, assuming it's an integer", object.Value)
-
-				value = convertBigIntToBigFloat(snmp.ToBigInt(object.Value))
 			}
 
 			resultMetricType = check.ResultMetricGauge
