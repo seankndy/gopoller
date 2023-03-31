@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/seankndy/gopoller/check"
 	"github.com/seankndy/gopoller/snmp"
+	"math/big"
 	"strings"
 )
 
@@ -35,7 +36,7 @@ func (c *Command) SetGetter(getter snmp.Getter) {
 	c.getter = getter
 }
 
-func (c *Command) Run(*check.Check) (*check.Result, error) {
+func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 	var getter snmp.Getter
 	if c.getter == nil {
 		getter = snmp.DefaultGetter
@@ -48,26 +49,23 @@ func (c *Command) Run(*check.Check) (*check.Result, error) {
 		return check.MakeUnknownResult("CMD_FAILURE"), err
 	}
 
-	var total, used uint64
+	total, used := big.NewInt(0), big.NewInt(0)
 	for _, obj := range objects {
-		var value uint64
-		switch obj.Type {
-		case snmp.Counter64:
-			value = obj.Value.(uint64)
-		case snmp.Counter32, snmp.Uinteger32, snmp.Gauge32:
-			value = uint64(obj.Value.(uint32))
-		case snmp.Integer:
-			value = uint64(obj.Value.(int))
-		}
+		value := snmp.ToBigInt(obj.Value)
 
 		if strings.HasPrefix(obj.Oid, OidPoolAddrTotal) {
-			total += value
+			total.Add(total, value)
 		} else if strings.HasPrefix(obj.Oid, OidPoolAddrsInUse) {
-			used += value
+			used.Add(used, value)
 		}
 	}
 
-	percentUsed := float64(used) / float64(total) * 100.0
+	percentUsed := new(big.Float).Mul(
+		new(big.Float).Quo(new(big.Float).SetInt(used), new(big.Float).SetInt(total)),
+		big.NewFloat(100),
+	)
+
+	chk.Debugf("total=%s used=%s percent-used=%s", total.String(), used.String(), percentUsed.String())
 
 	var resultState check.ResultState
 	var resultReasonCode string
@@ -78,10 +76,10 @@ func (c *Command) Run(*check.Check) (*check.Result, error) {
 			Type:  check.ResultMetricGauge,
 		},
 	}
-	if percentUsed > c.PercentUtilizationCritThreshold {
+	if percentUsed.Cmp(big.NewFloat(c.PercentUtilizationCritThreshold)) > 0 {
 		resultState = check.StateCrit
 		resultReasonCode = "IP_POOL_USAGE_HIGH"
-	} else if percentUsed > c.PercentUtilizationWarnThreshold {
+	} else if percentUsed.Cmp(big.NewFloat(c.PercentUtilizationWarnThreshold)) > 0 {
 		resultState = check.StateWarn
 		resultReasonCode = "IP_POOL_USAGE_HIGH"
 	} else {

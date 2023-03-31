@@ -7,24 +7,27 @@ import (
 	"time"
 )
 
-// ClientFactory should return a new RRDCacheD Client which will be called with
-// each invocation of Handler.Process()
-type ClientFactory func() Client
-
 // Handler processes check result metrics and sends them to a rrdcached server.
 type Handler struct {
-	clientFactory ClientFactory
+	Addr string
 
 	// GetRrdFileDefs should return a slice of RrdFileDefs defining the RRD file specifications for a given Check and
 	// it's Result data.
 	GetRrdFileDefs func(*check.Check, *check.Result) []RrdFileDef
+
+	clientDialer ClientDialer
 }
 
-func NewHandler(clientFactory ClientFactory, getRrdFileDefs func(*check.Check, *check.Result) []RrdFileDef) *Handler {
+func NewHandler(addr string, getRrdFileDefs func(*check.Check, *check.Result) []RrdFileDef) *Handler {
 	return &Handler{
-		clientFactory:  clientFactory,
+		Addr:           addr,
 		GetRrdFileDefs: getRrdFileDefs,
+		clientDialer:   DefaultClientDialer,
 	}
+}
+
+func (h *Handler) SetClientDialer(dialer ClientDialer) {
+	h.clientDialer = dialer
 }
 
 func (h *Handler) Mutate(*check.Check, *check.Result, *check.Incident) {
@@ -43,11 +46,8 @@ func (h *Handler) Process(chk *check.Check, result *check.Result, _ *check.Incid
 		return
 	}
 
-	// create our RRDCacheD client
-	client := h.clientFactory()
-
-	// connect to rrdcached
-	err = client.Connect()
+	// connect to RRDCacheD
+	client, err := h.clientDialer.Dial(h.Addr)
 	if err != nil {
 		return fmt.Errorf("error connecting to rrdcached: %v", err)
 	}

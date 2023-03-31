@@ -5,49 +5,45 @@ import (
 	"time"
 )
 
-// GoRrdClient is an RRD client adapter for github.com/multiplay/go-rrd to Client interface
-type GoRrdClient struct {
-	client  *rrd.Client
-	addr    string
-	timeout time.Duration
+// GoRrdDialer dials up a new GoRrdClient with each call to Dial()
+type GoRrdDialer struct {
+	Timeout time.Duration
 }
 
-func NewGoRrdClient(addr string, timeout time.Duration) *GoRrdClient {
-	return &GoRrdClient{
-		addr:    addr,
-		timeout: timeout,
-	}
-}
-
-func (c *GoRrdClient) Connect() error {
+func (d *GoRrdDialer) Dial(addr string) (Client, error) {
 	var client *rrd.Client
 	var err error
 
-	addr := c.addr
-	if addr[:7] == "unix://" {
-		addr = addr[7:]
-		client, err = rrd.NewClient(addr, rrd.Timeout(c.timeout), rrd.Unix)
-	} else {
-		if addr[:6] == "smtp://" {
-			addr = addr[6:]
-		}
-		client, err = rrd.NewClient(addr, rrd.Timeout(c.timeout))
+	if d.Timeout == 0 {
+		d.Timeout = 10 * time.Second
 	}
 
-	c.client = client
+	if addr != "" && addr[:7] == "unix://" {
+		client, err = rrd.NewClient(addr[7:], rrd.Timeout(d.Timeout), rrd.Unix)
+	} else {
+		client, err = rrd.NewClient(addr, rrd.Timeout(d.Timeout))
+	}
+	if err != nil {
+		return nil, err
+	}
 
-	return err
+	return &GoRrdClient{client}, nil
+}
+
+// GoRrdClient is an RRD client adapter for github.com/multiplay/go-rrd to Client interface
+type GoRrdClient struct {
+	Client *rrd.Client
 }
 
 func (c *GoRrdClient) Close() error {
-	if c.client != nil {
-		return c.client.Close()
+	if c.Client != nil {
+		return c.Client.Close()
 	}
 	return nil
 }
 
 func (c *GoRrdClient) ExecCmd(cmd *Cmd) ([]string, error) {
-	return c.client.ExecCmd(c.convertCmd(cmd))
+	return c.Client.ExecCmd(c.convertCmd(cmd))
 }
 
 func (c *GoRrdClient) Batch(cmds ...*Cmd) error {
@@ -55,11 +51,11 @@ func (c *GoRrdClient) Batch(cmds ...*Cmd) error {
 	for i, cmd := range cmds {
 		convertedCmds[i] = c.convertCmd(cmd)
 	}
-	return c.client.Batch(convertedCmds...)
+	return c.Client.Batch(convertedCmds...)
 }
 
 func (c *GoRrdClient) Last(filename string) (time.Time, error) {
-	return c.client.Last(filename)
+	return c.Client.Last(filename)
 }
 
 func (c *GoRrdClient) Create(filename string, ds []DS, rra []RRA, step time.Duration) error {
@@ -71,7 +67,7 @@ func (c *GoRrdClient) Create(filename string, ds []DS, rra []RRA, step time.Dura
 	for i, v := range rra {
 		convertedRRA[i] = c.convertRRA(v)
 	}
-	return c.client.Create(filename, convertedDS, convertedRRA, rrd.Step(step))
+	return c.Client.Create(filename, convertedDS, convertedRRA, rrd.Step(step))
 }
 
 // convertCmd takes a Cmd from this package and converts it to a go-rrd rrd.Cmd

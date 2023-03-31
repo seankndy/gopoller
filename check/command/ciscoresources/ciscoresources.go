@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/seankndy/gopoller/check"
 	"github.com/seankndy/gopoller/snmp"
+	"math/big"
 )
 
 const (
@@ -16,13 +17,13 @@ type Command struct {
 	getter snmp.Getter
 
 	Host                       snmp.Host
-	PercentCpuWarnThreshold    uint64
-	PercentCpuCritThreshold    uint64
-	PercentMemoryWarnThreshold uint64
-	PercentMemoryCritThreshold uint64
+	PercentCpuWarnThreshold    int64
+	PercentCpuCritThreshold    int64
+	PercentMemoryWarnThreshold int64
+	PercentMemoryCritThreshold int64
 }
 
-func NewCommand(addr, community string, percCpuWarnThreshold, percCpuCritThreshold, percMemWarnThreshold, percMemCritThreshold uint64) *Command {
+func NewCommand(addr, community string, percCpuWarnThreshold, percCpuCritThreshold, percMemWarnThreshold, percMemCritThreshold int64) *Command {
 	return &Command{
 		Host:                       *snmp.NewHost(addr, community),
 		PercentCpuWarnThreshold:    percCpuWarnThreshold,
@@ -52,9 +53,9 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 		return check.MakeUnknownResult("CMD_FAILURE"), fmt.Errorf("expected 3 snmp objects, got %d", len(objects))
 	}
 
-	var cpuPerc, memUsed, memFree uint64
+	var cpuPerc, memUsed, memFree *big.Int
 	for _, obj := range objects {
-		value := c.parseInt(obj.Value)
+		value := snmp.ToBigInt(obj.Value)
 
 		switch obj.Oid {
 		case OidCpu:
@@ -66,32 +67,39 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 		}
 	}
 
-	memoryPerc := uint64(float64(memUsed) / (float64(memFree) + float64(memUsed)) * 100.0)
+	memTotal := big.NewInt(0).Add(memUsed, memFree)
+	memoryPerc, _ := new(big.Float).Mul(
+		new(big.Float).Quo(new(big.Float).SetInt(memUsed), new(big.Float).SetInt(memTotal)),
+		big.NewFloat(100),
+	).Int(nil)
+
+	chk.Debugf("cpu=%s mem-total=%s mem-used=%s mem-percent-used=%s",
+		cpuPerc.String(), memTotal.String(), memUsed.String(), memoryPerc.String())
 
 	var resultState check.ResultState
 	var resultReasonCode string
 	resultMetrics := []check.ResultMetric{
 		{
 			Label: "cpu",
-			Value: fmt.Sprintf("%d", cpuPerc),
+			Value: cpuPerc.String(),
 			Type:  check.ResultMetricGauge,
 		},
 		{
 			Label: "memory",
-			Value: fmt.Sprintf("%d", memoryPerc),
+			Value: memoryPerc.String(),
 			Type:  check.ResultMetricGauge,
 		},
 	}
-	if cpuPerc > c.PercentCpuCritThreshold {
+	if cpuPerc.Cmp(big.NewInt(c.PercentCpuCritThreshold)) > 0 {
 		resultState = check.StateCrit
 		resultReasonCode = "CPU_USAGE_HIGH"
-	} else if cpuPerc > c.PercentCpuWarnThreshold {
+	} else if cpuPerc.Cmp(big.NewInt(c.PercentCpuWarnThreshold)) > 0 {
 		resultState = check.StateWarn
 		resultReasonCode = "CPU_USAGE_HIGH"
-	} else if memoryPerc > c.PercentMemoryCritThreshold {
+	} else if memoryPerc.Cmp(big.NewInt(c.PercentMemoryCritThreshold)) > 0 {
 		resultState = check.StateCrit
 		resultReasonCode = "MEM_USAGE_HIGH"
-	} else if memoryPerc > c.PercentMemoryWarnThreshold {
+	} else if memoryPerc.Cmp(big.NewInt(c.PercentMemoryWarnThreshold)) > 0 {
 		resultState = check.StateWarn
 		resultReasonCode = "MEM_USAGE_HIGH"
 	} else {
@@ -99,31 +107,4 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 	}
 
 	return check.NewResult(resultState, resultReasonCode, resultMetrics), nil
-}
-
-func (c *Command) parseInt(val any) uint64 {
-	switch value := val.(type) {
-	case int:
-		return uint64(value)
-	case int8:
-		return uint64(value)
-	case int16:
-		return uint64(value)
-	case int32:
-		return uint64(value)
-	case int64:
-		return uint64(value)
-	case uint:
-		return uint64(value)
-	case uint8:
-		return uint64(value)
-	case uint16:
-		return uint64(value)
-	case uint32:
-		return uint64(value)
-	case uint64:
-		return value
-	default:
-		return 0
-	}
 }

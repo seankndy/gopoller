@@ -2,7 +2,6 @@ package snmp
 
 import (
 	"fmt"
-	"github.com/gosnmp/gosnmp"
 	"github.com/seankndy/gopoller/check"
 	"github.com/seankndy/gopoller/snmp"
 	"math/big"
@@ -108,7 +107,7 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 				fmt.Errorf("snmp.Command.Run(): oid %s could not be found in monitors", object.Oid)
 		}
 
-		value := gosnmp.ToBigInt(object.Value)
+		value := snmp.ToBigInt(object.Value)
 
 		var resultMetricValue string
 		var resultMetricType check.ResultMetricType

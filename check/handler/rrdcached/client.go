@@ -7,8 +7,11 @@ import (
 	"time"
 )
 
+type ClientDialer interface {
+	Dial(addr string) (Client, error)
+}
+
 type Client interface {
-	Connect() error
 	Close() error
 	// ExecCmd executes rrdcached command, then returns lines from rrdcached output
 	ExecCmd(*Cmd) ([]string, error)
@@ -16,6 +19,8 @@ type Client interface {
 	Last(filename string) (time.Time, error)
 	Create(filename string, ds []DS, rra []RRA, step time.Duration) error
 }
+
+var DefaultClientDialer = new(GoRrdDialer)
 
 // Cmd defines an RRDCacheD command
 type Cmd struct {

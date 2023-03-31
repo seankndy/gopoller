@@ -11,62 +11,70 @@ import (
 var lastMock func(file string) (time.Time, error)
 
 func TestDoesNotConnectToRrdCacheDWhenGetRrdFileDefsNil(t *testing.T) {
-	mockRrdClient := MockRrdClient{}
-	h := NewHandler(func() Client { return &mockRrdClient }, nil)
+	mockRrdClient := &MockRrdClient{}
+	mockRrdClientDialer := &MockRrdClientDialer{Client: mockRrdClient}
+	h := NewHandler("", nil)
+	h.SetClientDialer(mockRrdClientDialer)
 
 	chk := &check.Check{}
 	result := check.NewResult(check.StateOk, "", nil)
 
-	h.Process(chk, result, nil)
+	_ = h.Process(chk, result, nil)
 
-	if mockRrdClient.ConnectCalled > 0 {
-		t.Error("Process() connected to rrdcached unexpectedly")
+	if mockRrdClientDialer.DialCalled > 0 {
+		t.Error("Process() connected/dialed to rrdcached unexpectedly")
 	}
 }
 
 func TestDoesNotConnectToRrdCacheDWhenGetRrdFilesReturnsNil(t *testing.T) {
-	mockRrdClient := MockRrdClient{}
-	h := NewHandler(func() Client { return &mockRrdClient }, func(*check.Check, *check.Result) []RrdFileDef {
+	mockRrdClient := &MockRrdClient{}
+	mockRrdClientDialer := &MockRrdClientDialer{Client: mockRrdClient}
+	h := NewHandler("", func(*check.Check, *check.Result) []RrdFileDef {
 		return nil
 	})
+	h.SetClientDialer(mockRrdClientDialer)
 
 	chk := &check.Check{}
 	result := check.NewResult(check.StateOk, "", nil)
 
-	h.Process(chk, result, nil)
+	_ = h.Process(chk, result, nil)
 
-	if mockRrdClient.ConnectCalled > 0 {
-		t.Error("Process() connected to rrdcached unexpectedly")
+	if mockRrdClientDialer.DialCalled > 0 {
+		t.Error("Process() connected/dialed to rrdcached unexpectedly")
 	}
 }
 
 func TestConnectsToRrdCacheDWhenGetRrdFilesReturnsData(t *testing.T) {
-	mockRrdClient := MockRrdClient{}
-	h := NewHandler(func() Client { return &mockRrdClient }, func(*check.Check, *check.Result) []RrdFileDef {
+	mockRrdClient := &MockRrdClient{}
+	mockRrdClientDialer := &MockRrdClientDialer{Client: mockRrdClient}
+	h := NewHandler("", func(*check.Check, *check.Result) []RrdFileDef {
 		return []RrdFileDef{
 			{Filename: "/foo.rrd"},
 		}
 	})
+	h.SetClientDialer(mockRrdClientDialer)
 
 	chk := &check.Check{}
 	result := check.NewResult(check.StateOk, "", nil)
 
-	h.Process(chk, result, nil)
+	_ = h.Process(chk, result, nil)
 
-	if mockRrdClient.ConnectCalled == 0 {
-		t.Error("Process() did not connect to rrdcached when expected")
+	if mockRrdClientDialer.DialCalled == 0 {
+		t.Error("Process() did not connect/dial to rrdcached when expected")
 	}
 }
 
 func TestOnlyCreatesRrdFilesThatDontExist(t *testing.T) {
-	mockRrdClient := MockRrdClient{}
-	h := NewHandler(func() Client { return &mockRrdClient }, func(*check.Check, *check.Result) []RrdFileDef {
+	mockRrdClient := &MockRrdClient{}
+	mockRrdClientDialer := &MockRrdClientDialer{Client: mockRrdClient}
+	h := NewHandler("", func(*check.Check, *check.Result) []RrdFileDef {
 		return []RrdFileDef{
 			{Filename: "/foo1.rrd"},
 			{Filename: "/foo2.rrd"},
 			{Filename: "/foo3.rrd"},
 		}
 	})
+	h.SetClientDialer(mockRrdClientDialer)
 
 	chk := &check.Check{}
 	result := check.NewResult(check.StateOk, "", nil)
@@ -80,7 +88,7 @@ func TestOnlyCreatesRrdFilesThatDontExist(t *testing.T) {
 		return t, fmt.Errorf(file + ": No such file or directory")
 	}
 
-	h.Process(chk, result, nil)
+	_ = h.Process(chk, result, nil)
 
 	lastMock = nil
 
@@ -92,8 +100,9 @@ func TestOnlyCreatesRrdFilesThatDontExist(t *testing.T) {
 }
 
 func TestIssuesCorrectBatchUpdateCommands(t *testing.T) {
-	mockRrdClient := MockRrdClient{}
-	h := NewHandler(func() Client { return &mockRrdClient }, func(*check.Check, *check.Result) []RrdFileDef {
+	mockRrdClient := &MockRrdClient{}
+	mockRrdClientDialer := &MockRrdClientDialer{Client: mockRrdClient}
+	h := NewHandler("", func(*check.Check, *check.Result) []RrdFileDef {
 		return []RrdFileDef{
 			{
 				Filename: "/foo1.rrd",
@@ -123,6 +132,7 @@ func TestIssuesCorrectBatchUpdateCommands(t *testing.T) {
 			},
 		}
 	})
+	h.SetClientDialer(mockRrdClientDialer)
 
 	tm := time.Unix(556549200, 0)
 	chk := &check.Check{}
@@ -139,7 +149,7 @@ func TestIssuesCorrectBatchUpdateCommands(t *testing.T) {
 		Time: tm,
 	}
 
-	h.Process(chk, result, nil)
+	_ = h.Process(chk, result, nil)
 
 	if mockRrdClient.BatchCalled == 0 {
 		t.Error("Batch never called on RRD client")
@@ -159,18 +169,22 @@ func TestIssuesCorrectBatchUpdateCommands(t *testing.T) {
 	}
 }
 
+type MockRrdClientDialer struct {
+	Client     Client
+	DialCalled int
+}
+
+func (d *MockRrdClientDialer) Dial(string) (Client, error) {
+	d.DialCalled++
+	return d.Client, nil
+}
+
 type MockRrdClient struct {
-	ConnectCalled   int
 	CloseCalled     int
 	CreateCalled    int
 	CreateFilenames []string
 	BatchCalled     int
 	BatchCmds       map[int][]*Cmd
-}
-
-func (m *MockRrdClient) Connect() error {
-	m.ConnectCalled++
-	return nil
 }
 
 func (m *MockRrdClient) Close() error {

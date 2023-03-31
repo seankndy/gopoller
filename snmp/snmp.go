@@ -2,6 +2,7 @@ package snmp
 
 import (
 	"math/big"
+	"strconv"
 )
 
 var (
@@ -73,4 +74,47 @@ func CalculateCounterDiff(lastValue *big.Int, currentValue *big.Int, nbits uint8
 		diff = diff.Add(diff, maxCounterValue)
 	}
 	return diff
+}
+
+// ToBigInt converts Object.Value to big.Int, or returns a zero big.Int for
+// non int-like types (eg strings).
+//
+// This is a convenience function to make working with SnmpPDU's easier - it
+// reduces the need for type assertions. A big.Int is convenient, as SNMP can
+// return int32, uint32, and uint64.
+func ToBigInt(value interface{}) *big.Int {
+	var val int64
+
+	switch value := value.(type) { // shadow
+	case int:
+		val = int64(value)
+	case int8:
+		val = int64(value)
+	case int16:
+		val = int64(value)
+	case int32:
+		val = int64(value)
+	case int64:
+		val = value
+	case uint:
+		val = int64(value)
+	case uint8:
+		val = int64(value)
+	case uint16:
+		val = int64(value)
+	case uint32:
+		val = int64(value)
+	case uint64: // beware: int64(MaxUint64) overflow, handle different
+		return new(big.Int).SetUint64(value)
+	case string:
+		// for testing and other apps - numbers may appear as strings
+		var err error
+		if val, err = strconv.ParseInt(value, 10, 64); err != nil {
+			val = 0
+		}
+	default:
+		val = 0
+	}
+
+	return big.NewInt(val)
 }
