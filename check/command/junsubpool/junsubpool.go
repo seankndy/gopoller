@@ -53,6 +53,8 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 	for _, obj := range objects {
 		value := snmp.ToBigInt(obj.Value)
 
+		chk.Debugf("got oid=%s value=%s", obj.Oid, value)
+
 		if strings.HasPrefix(obj.Oid, OidPoolAddrTotal) {
 			total.Add(total, value)
 		} else if strings.HasPrefix(obj.Oid, OidPoolAddrsInUse) {
