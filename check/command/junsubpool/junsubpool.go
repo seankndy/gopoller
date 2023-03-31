@@ -78,6 +78,7 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 			Type:  check.ResultMetricGauge,
 		},
 	}
+
 	if percentUsed.Cmp(big.NewFloat(c.PercentUtilizationCritThreshold)) > 0 {
 		resultState = check.StateCrit
 		resultReasonCode = "IP_POOL_USAGE_HIGH"

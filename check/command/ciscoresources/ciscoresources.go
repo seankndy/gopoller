@@ -73,8 +73,8 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 		big.NewFloat(100),
 	).Int(nil)
 
-	chk.Debugf("cpu=%s mem-total=%s mem-used=%s mem-percent-used=%s",
-		cpuPerc.String(), memTotal.String(), memUsed.String(), memoryPerc.String())
+	chk.Debugf("cpu=%s mem-free=%s mem-used=%s mem-total=%s mem-percent-used=%s",
+		cpuPerc.String(), memFree.String(), memUsed.String(), memTotal.String(), memoryPerc.String())
 
 	var resultState check.ResultState
 	var resultReasonCode string
@@ -90,6 +90,7 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 			Type:  check.ResultMetricGauge,
 		},
 	}
+
 	if cpuPerc.Cmp(big.NewInt(c.PercentCpuCritThreshold)) > 0 {
 		resultState = check.StateCrit
 		resultReasonCode = "CPU_USAGE_HIGH"
