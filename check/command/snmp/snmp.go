@@ -149,10 +149,15 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 		} else {
 			var value *big.Float
 			if strValue, ok := object.Value.(string); ok {
+				chk.Debugf("oid %s is an string value (%s)", object.Oid, strValue)
+
 				strValue = strings.TrimSpace(strValue)
 				value = new(big.Float).SetPrec(64)
 				if _, ok = value.SetString(strValue); !ok {
+					chk.Debugf("failed to parse string (%s) into big float", strValue)
 					value = big.NewFloat(0)
+				} else {
+					chk.Debugf("string (%s) parsed to big float (%s)", strValue, value.String())
 				}
 			} else {
 				value = convertBigIntToBigFloat(snmp.ToBigInt(object.Value))

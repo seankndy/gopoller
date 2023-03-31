@@ -371,6 +371,34 @@ func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 	}
 }
 
+func TestStringGaugeValuesAreParsedAsFloats(t *testing.T) {
+	getterMock := new(MockGetter)
+	getterMock.On("Get", mock.Anything).Return([]snmp.Object{
+		{
+			Type:  snmp.OctetString,
+			Value: "  0.12345678",
+			Oid:   "1.2.3.4.5.6.7.8",
+		},
+	}, nil)
+
+	cmd := &Command{OidMonitors: []OidMonitor{
+		{
+			Oid:              "1.2.3.4.5.6.7.8",
+			Name:             "foo1",
+			PostProcessValue: 1.0,
+		},
+	}}
+	cmd.SetGetter(getterMock)
+	result, _ := cmd.Run(&check.Check{})
+	assert.Equal(t, []check.ResultMetric{
+		{
+			Label: "foo1",
+			Value: "0.12345678",
+			Type:  check.ResultMetricGauge,
+		},
+	}, result.Metrics)
+}
+
 type MockGetter struct {
 	mock.Mock
 }
