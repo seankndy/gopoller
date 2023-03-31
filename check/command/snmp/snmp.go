@@ -149,7 +149,7 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 		} else {
 			var value *big.Float
 			if strValue, ok := object.Value.(string); ok {
-				chk.Debugf("oid %s is an string value (%s)", object.Oid, strValue)
+				chk.Debugf("gauge oid %s is a string value (%s)", object.Oid, strValue)
 
 				strValue = strings.TrimSpace(strValue)
 				value = new(big.Float).SetPrec(64)
@@ -160,6 +160,8 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 					chk.Debugf("string (%s) parsed to big float (%s)", strValue, value.String())
 				}
 			} else {
+				chk.Debugf("gauge value %v is not a string, assuming it's an integer", object.Value)
+
 				value = convertBigIntToBigFloat(snmp.ToBigInt(object.Value))
 			}
 
