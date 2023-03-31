@@ -68,7 +68,10 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 
 	var state check.ResultState
 	var reasonCode string
-	if lossPerc > c.PacketLossCritThreshold {
+	if lossPerc == 100 {
+		state = check.StateCrit
+		reasonCode = "UNREACHABLE"
+	} else if lossPerc > c.PacketLossCritThreshold {
 		state = check.StateCrit
 		reasonCode = "PKT_LOSS_HIGH"
 	} else if lossPerc > c.PacketLossWarnThreshold {
