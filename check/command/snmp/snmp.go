@@ -30,7 +30,7 @@ func NewOidMonitor(oid, name string) *OidMonitor {
 	}
 }
 
-func (m *OidMonitor) determineResultStateAndReasonFromResultValue(value *big.Float) (check.ResultState, string) {
+func (m OidMonitor) determineResultStateAndReasonFromResultValue(value *big.Float) (check.ResultState, string) {
 	if m.CritMinReasonCode != "" && value.Cmp(big.NewFloat(m.CritMinThreshold)) < 0 {
 		return check.StateCrit, m.CritMinReasonCode
 	} else if m.WarnMinReasonCode != "" && value.Cmp(big.NewFloat(m.WarnMinThreshold)) < 0 {
@@ -44,7 +44,7 @@ func (m *OidMonitor) determineResultStateAndReasonFromResultValue(value *big.Flo
 	return check.StateOk, ""
 }
 
-func (m *OidMonitor) String() string {
+func (m OidMonitor) String() string {
 	return fmt.Sprintf(
 		"name=%s ppv=%f warn-min-thresh=%f crit-min-thres=%f warn-max-thres=%f crit-max-thres=%f warn-min-reason=%s crit-min-reason=%s warn-max-reason=%s crit-max-reason=%s",
 		m.Name, m.PostProcessValue, m.WarnMinThreshold, m.CritMinThreshold, m.WarnMaxThreshold, m.CritMaxThreshold, m.WarnMinReasonCode, m.CritMinReasonCode, m.WarnMaxReasonCode, m.CritMaxReasonCode,
