@@ -93,7 +93,9 @@ func (q *Queue) Flush() {
 	// enqueue the checks in the underlying queue that never ran
 	chks := q.queue.All()
 	q.queue.Flush()
-	q.CheckEnqueuer.Enqueue(chks)
+	if len(chks) > 0 {
+		q.CheckEnqueuer.Enqueue(chks)
+	}
 }
 
 // runCheckEnqueuer kicks off goroutine to periodically call the CheckEnqueuer
@@ -123,9 +125,7 @@ func (q *Queue) enqueuePending() {
 	}
 	q.mu.Unlock()
 
-	if len(chks) == 0 {
-		return
+	if len(chks) > 0 {
+		q.CheckEnqueuer.Enqueue(chks)
 	}
-
-	q.CheckEnqueuer.Enqueue(chks)
 }

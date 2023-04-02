@@ -194,10 +194,8 @@ func (c *Check) Execute() error {
 }
 
 func (c *Check) runResultHandlerMutations(result *Result, newIncident *Incident) {
-	if c.Handlers != nil {
-		for _, h := range c.Handlers {
-			h.Mutate(c, result, newIncident)
-		}
+	for _, h := range c.Handlers {
+		h.Mutate(c, result, newIncident)
 	}
 }
 
@@ -240,7 +238,7 @@ func (c *Check) runResultHandlerProcessing(result *Result, newIncident *Incident
 }
 
 func (c *Check) makeNewIncidentIfJustified(result *Result) *Incident {
-	if !result.justifiesNewIncidentForCheck(*c) {
+	if !result.justifiesNewIncidentForCheck(c) {
 		return nil
 	}
 
@@ -277,11 +275,18 @@ type Command interface {
 // called asynchronously and should never mutate data.
 type Handler interface {
 	// Mutate allows the handler to mutate any data in the Check, Result or
-	// Incident prior to Process()ing it.
+	// Incident prior to Process()ing it.  Mutate() is called sequentially in
+	// the order the Handlers are defined on the Check.
 	Mutate(check *Check, newResult *Result, newIncident *Incident)
 
-	// Process executes asynchronously and should never mutate data. newIncident
-	// is a pointer as it may be nil indicating there isn't a new incident for
-	// the Check.
+	// Process executes asynchronously and should not mutate data.
 	Process(check *Check, newResult *Result, newIncident *Incident) error
+}
+
+// Queue is used by a server.Server to feed it work (Checks to execute).
+type Queue interface {
+	Enqueue(chk *Check)
+	Dequeue() *Check
+	Count() uint64
+	Flush()
 }

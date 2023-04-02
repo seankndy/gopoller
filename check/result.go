@@ -65,7 +65,7 @@ func NewResult(state ResultState, reasonCode string, metrics []ResultMetric) *Re
 // justifiesNewIncidentForCheck determines if the Result 'r' for the Check
 // 'check' has undergone state changes that justify the creation of a new
 // incident.
-func (r Result) justifiesNewIncidentForCheck(check Check) bool {
+func (r Result) justifiesNewIncidentForCheck(check *Check) bool {
 	// if incident suppression is on, never allow new incident
 	if check.SuppressIncidents {
 		return false
