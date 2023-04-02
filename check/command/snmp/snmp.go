@@ -30,18 +30,25 @@ func NewOidMonitor(oid, name string) *OidMonitor {
 	}
 }
 
-func (o *OidMonitor) determineResultStateAndReasonFromResultValue(value *big.Float) (check.ResultState, string) {
-	if o.CritMinReasonCode != "" && value.Cmp(big.NewFloat(o.CritMinThreshold)) < 0 {
-		return check.StateCrit, o.CritMinReasonCode
-	} else if o.WarnMinReasonCode != "" && value.Cmp(big.NewFloat(o.WarnMinThreshold)) < 0 {
-		return check.StateWarn, o.WarnMinReasonCode
-	} else if o.CritMaxReasonCode != "" && value.Cmp(big.NewFloat(o.CritMaxThreshold)) > 0 {
-		return check.StateCrit, o.CritMaxReasonCode
-	} else if o.WarnMaxReasonCode != "" && value.Cmp(big.NewFloat(o.WarnMaxThreshold)) > 0 {
-		return check.StateWarn, o.WarnMaxReasonCode
+func (m *OidMonitor) determineResultStateAndReasonFromResultValue(value *big.Float) (check.ResultState, string) {
+	if m.CritMinReasonCode != "" && value.Cmp(big.NewFloat(m.CritMinThreshold)) < 0 {
+		return check.StateCrit, m.CritMinReasonCode
+	} else if m.WarnMinReasonCode != "" && value.Cmp(big.NewFloat(m.WarnMinThreshold)) < 0 {
+		return check.StateWarn, m.WarnMinReasonCode
+	} else if m.CritMaxReasonCode != "" && value.Cmp(big.NewFloat(m.CritMaxThreshold)) > 0 {
+		return check.StateCrit, m.CritMaxReasonCode
+	} else if m.WarnMaxReasonCode != "" && value.Cmp(big.NewFloat(m.WarnMaxThreshold)) > 0 {
+		return check.StateWarn, m.WarnMaxReasonCode
 	}
 
 	return check.StateOk, ""
+}
+
+func (m *OidMonitor) String() string {
+	return fmt.Sprintf(
+		"name=%s ppv=%f warn-min-thresh=%f crit-min-thres=%f warn-max-thres=%f crit-max-thres=%f warn-min-reason=%s crit-min-reason=%s warn-max-reason=%s crit-max-reason=%s",
+		m.Name, m.PostProcessValue, m.WarnMinThreshold, m.CritMinThreshold, m.WarnMaxThreshold, m.CritMaxThreshold, m.WarnMinReasonCode, m.CritMinReasonCode, m.WarnMaxReasonCode, m.CritMaxReasonCode,
+	)
 }
 
 type Command struct {
@@ -77,9 +84,9 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 	for k, _ := range c.OidMonitors {
 		rawOids[k] = c.OidMonitors[k].Oid
 		oidMonitorsByOid[c.OidMonitors[k].Oid] = &c.OidMonitors[k]
-	}
 
-	chk.Debugf("oid(s) to fetch: %s", rawOids)
+		chk.Debugf("oid monitor: %s", c.OidMonitors[k])
+	}
 
 	objects, err := getter.Get(&c.Host, rawOids)
 	if err != nil {
