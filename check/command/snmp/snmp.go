@@ -46,8 +46,8 @@ func (m OidMonitor) determineResultStateAndReasonFromResultValue(value *big.Floa
 
 func (m OidMonitor) String() string {
 	return fmt.Sprintf(
-		"name=%s ppv=%f warn-min-thresh=%f crit-min-thres=%f warn-max-thres=%f crit-max-thres=%f warn-min-reason=%s crit-min-reason=%s warn-max-reason=%s crit-max-reason=%s",
-		m.Name, m.PostProcessValue, m.WarnMinThreshold, m.CritMinThreshold, m.WarnMaxThreshold, m.CritMaxThreshold, m.WarnMinReasonCode, m.CritMinReasonCode, m.WarnMaxReasonCode, m.CritMaxReasonCode,
+		"name=%s oid=%s ppv=%f warn-min-thresh=%f crit-min-thres=%f warn-max-thres=%f crit-max-thres=%f warn-min-reason=%s crit-min-reason=%s warn-max-reason=%s crit-max-reason=%s",
+		m.Name, m.Oid, m.PostProcessValue, m.WarnMinThreshold, m.CritMinThreshold, m.WarnMaxThreshold, m.CritMaxThreshold, m.WarnMinReasonCode, m.CritMinReasonCode, m.WarnMaxReasonCode, m.CritMaxReasonCode,
 	)
 }
 
