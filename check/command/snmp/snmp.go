@@ -168,13 +168,12 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 				value = convertBigIntToBigFloat(snmp.ToBigInt(object.Value))
 			}
 
-			resultMetricType = check.ResultMetricGauge
-
-			// if state is still Unknown, check if this snmp object exceeds any thresholds
-			if resultState == check.StateUnknown {
-				resultState, resultReason = oidMonitor.determineResultStateAndReasonFromResultValue(value)
+			s, r := oidMonitor.determineResultStateAndReasonFromResultValue(value)
+			if s.Overrides(resultState) {
+				resultState, resultReason = s, r
 			}
 
+			resultMetricType = check.ResultMetricGauge
 			// multiply object value by the post-process value, but only for non-counter types
 			resultMetricValue = value.Mul(value, big.NewFloat(oidMonitor.PostProcessValue)).Text('f', -1)
 		}

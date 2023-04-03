@@ -152,6 +152,82 @@ func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 		wantReasonCode  string
 	}{
 		{
+			name:  "warn_after_an_ok", // test that if we encounter a WARN after we already got an OK, we get a WARN result
+			check: check.Check{},
+			snmpObjects: []snmp.Object{
+				{
+					Type:  snmp.Uinteger32,
+					Value: uint32(100),
+					Oid:   "1.2.3.4.5.6.7.8",
+				},
+				{
+					Type:  snmp.Uinteger32,
+					Value: uint32(100000000),
+					Oid:   "1.2.3.4.5.6.7.9",
+				},
+			},
+			oidMonitors: []OidMonitor{
+				{
+					Oid:              "1.2.3.4.5.6.7.8",
+					Name:             "foo1",
+					PostProcessValue: 1.0,
+				},
+				{
+					Oid:               "1.2.3.4.5.6.7.9",
+					Name:              "foo2",
+					PostProcessValue:  0.00001,
+					WarnMinThreshold:  1000000000,
+					WarnMinReasonCode: "FOO2_MIN",
+				},
+			},
+			wantResultState: check.StateWarn,
+			wantReasonCode:  "FOO2_MIN",
+		},
+		{
+			name:  "crit_after_a_warn_after_an_ok",
+			check: check.Check{},
+			snmpObjects: []snmp.Object{
+				{
+					Type:  snmp.Uinteger32,
+					Value: uint32(100),
+					Oid:   "1.2.3.4.5.6.7.8",
+				},
+				{
+					Type:  snmp.Uinteger32,
+					Value: uint32(100000000),
+					Oid:   "1.2.3.4.5.6.7.9",
+				},
+				{
+					Type:  snmp.Uinteger32,
+					Value: uint32(100),
+					Oid:   "1.2.3.4.5.6.7.1",
+				},
+			},
+			oidMonitors: []OidMonitor{
+				{
+					Oid:              "1.2.3.4.5.6.7.8",
+					Name:             "foo1",
+					PostProcessValue: 1.0,
+				},
+				{
+					Oid:               "1.2.3.4.5.6.7.9",
+					Name:              "foo2",
+					PostProcessValue:  0.00001,
+					WarnMinThreshold:  1000000000,
+					WarnMinReasonCode: "FOO2_MIN",
+				},
+				{
+					Oid:               "1.2.3.4.5.6.7.1",
+					Name:              "foo3",
+					PostProcessValue:  0.00001,
+					CritMinThreshold:  101,
+					CritMinReasonCode: "FOO3_MIN",
+				},
+			},
+			wantResultState: check.StateCrit,
+			wantReasonCode:  "FOO3_MIN",
+		},
+		{
 			name:  "warn_min",
 			check: check.Check{},
 			snmpObjects: []snmp.Object{

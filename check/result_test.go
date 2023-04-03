@@ -70,7 +70,7 @@ func TestJustifiesNewIncidentForCheck(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got := tt.result.justifiesNewIncidentForCheck(tt.check)
+		got := tt.result.justifiesNewIncidentForCheck(&tt.check)
 
 		if got != tt.want {
 			t.Errorf("justifiesNewIncidentForCheck() = %v, want %v", got, tt.want)

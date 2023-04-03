@@ -28,6 +28,21 @@ func (s ResultState) String() string {
 	}
 }
 
+// Overrides returns true if s should take the place of z.  For example, if s is WARN and z is CRIT, then
+// z is a "worse" result and thus should take its place.
+func (s ResultState) Overrides(z ResultState) bool {
+	switch s {
+	case StateOk:
+		return z == StateUnknown
+	case StateWarn:
+		return z == StateUnknown || z == StateOk
+	case StateCrit:
+		return z == StateUnknown || z == StateOk || z == StateWarn
+	default:
+		return false
+	}
+}
+
 func NewResultStateFromString(state string) ResultState {
 	switch state {
 	case "OK":
