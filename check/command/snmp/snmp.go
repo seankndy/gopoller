@@ -101,7 +101,7 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 	var resultReason string
 
 	for _, object := range objects {
-		chk.Debugf("got oid=%s value=%v", object.Oid, object.Value)
+		chk.Debugf("got oid=%s type=%v value=%v", object.Oid, object.Type, object.Value)
 
 		oidMonitor := oidMonitorsByOid[object.Oid]
 		if oidMonitor == nil {
