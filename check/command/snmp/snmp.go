@@ -114,6 +114,11 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 				fmt.Errorf("snmp.Command.Run(): oid %s could not be found in monitors", object.Oid)
 		}
 
+		if object.Type == snmp.Null {
+			chk.Debugf("skipping oid=%s as it is null/nil", object.Oid)
+			continue
+		}
+
 		var resultMetricValue string
 		var resultMetricType check.ResultMetricType
 
