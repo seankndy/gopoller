@@ -133,7 +133,7 @@ func (c *Check) SetDebugLogger(logger debugLogger) {
 
 // DueAt returns the time when check is due (could be past or future)
 func (c *Check) DueAt() time.Time {
-	return c.Schedule.DueAt(*c)
+	return c.Schedule.DueAt(c)
 }
 
 // IsDue returns true if the check is due for execution
@@ -141,8 +141,7 @@ func (c *Check) IsDue() bool {
 	return c.DueAt().Compare(time.Now()) <= 0
 }
 
-// Debugf should be used liberally by Commands and Handlers to provide debug
-// information.
+// Debugf should be used liberally by Commands and Handlers to provide debugging information.
 func (c *Check) Debugf(format string, args ...any) {
 	if c.debugLogger != nil {
 		formatPrefix := fmt.Sprintf("[ID:%s] ", c.Id)
@@ -157,8 +156,8 @@ func (c *Check) Debugf(format string, args ...any) {
 	}
 }
 
-// Execute executes a Check's Command followed by its Handlers.  It then sets
-// the Incident (if there is one), LastCheck and LastResult fields on the Check.
+// Execute executes a Check's Command followed by its Handlers.  It then sets the Incident (if there is one),
+// LastCheck and LastResult fields on the Check.
 func (c *Check) Execute() error {
 	c.Executed = true
 
@@ -289,4 +288,24 @@ type Queue interface {
 	Dequeue() *Check
 	Count() uint64
 	Flush()
+}
+
+// Schedule is used by a Check to provide its execution schedule.
+type Schedule interface {
+	// DueAt returns a time.Time of the exact point in time the Check will
+	// be next due.
+	DueAt(*Check) time.Time
+}
+
+// PeriodicSchedule is a simple Scheduler that is due every IntervalSeconds seconds
+type PeriodicSchedule struct {
+	IntervalSeconds int
+}
+
+func (s PeriodicSchedule) DueAt(check *Check) time.Time {
+	if check.LastCheck == nil {
+		return time.Now()
+	}
+
+	return check.LastCheck.Add(time.Duration(s.IntervalSeconds) * time.Second)
 }

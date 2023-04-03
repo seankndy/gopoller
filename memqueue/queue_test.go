@@ -23,10 +23,16 @@ func TestMemoryCheckQueueEnqueuesAndDequeues(t *testing.T) {
 
 	var c *check.Check
 	c = q.Dequeue()
+	if c == nil {
+		t.Fatalf("Dequeue(): expected a Check, got nil")
+	}
 	if c.Id != check2.Id {
 		t.Errorf("Dequeue(): expected check with ID %v, got %v", check2.Id, c.Id)
 	}
 	c = q.Dequeue()
+	if c == nil {
+		t.Fatalf("Dequeue(): expected a Check, got nil")
+	}
 	if c.Id != check1.Id {
 		t.Errorf("Dequeue(): expected check with ID %v, got %v", check1.Id, c.Id)
 	}
