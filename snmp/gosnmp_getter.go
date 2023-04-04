@@ -69,7 +69,7 @@ func (c *GoSnmpGetter) connect(host *Host) (*gosnmp.GoSNMP, error) {
 		Transport:          host.Transport,
 		Community:          host.Community,
 		Version:            version,
-		Retries:            1,
+		Retries:            3,
 		Timeout:            3 * time.Second,
 		ExponentialTimeout: false,
 	}
