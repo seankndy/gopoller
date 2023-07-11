@@ -77,6 +77,8 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 		getter = c.getter
 	}
 
+	chk.Debugf("beginning snmp execution for check: %s", chk)
+
 	// create a map of oid->oidMonitors for fast OidMonitor lookup when processing the result values below
 	oidMonitorsByOid := make(map[string]*OidMonitor, len(c.OidMonitors))
 	// build raw slice of oids from c.OidMonitors to pass to getSnmpObjects()
@@ -138,6 +140,9 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 			if resultState != check.StateCrit {
 				// get last metric to calculate difference
 				lastMetric := getChecksLastResultMetricByLabel(chk, oidMonitor.Name)
+
+				chk.Debugf("counter oid %s last metric: %s", object.Oid, lastMetric)
+
 				var lastValue *big.Int
 				if lastMetric != nil {
 					var ok bool
@@ -161,7 +166,7 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 
 				s, r := oidMonitor.determineResultStateAndReasonFromResultValue(convertBigIntToBigFloat(diff))
 				if s.Overrides(resultState) {
-					chk.Debugf("counter oid %s has tripped a threshold: %s, %s", object.Oid, s.String(), r)
+					chk.Debugf("counter oid %s result state (%s, %s) overrides previous state (%s, %s)", object.Oid, s.String(), r, resultState.String(), resultReason)
 					resultState, resultReason = s, r
 				}
 			}
@@ -182,7 +187,7 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 
 			s, r := oidMonitor.determineResultStateAndReasonFromResultValue(value)
 			if s.Overrides(resultState) {
-				chk.Debugf("gauge oid %s has tripped a threshold: %s, %s", object.Oid, s.String(), r)
+				chk.Debugf("gauge oid %s result state (%s, %s) overrides previous state (%s, %s)", object.Oid, s.String(), r, resultState.String(), resultReason)
 				resultState, resultReason = s, r
 			}
 
