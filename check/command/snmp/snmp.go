@@ -157,7 +157,10 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 					diff = snmp.CalculateCounterDiff(lastValue, value, 32)
 				}
 
-				resultState, resultReason = oidMonitor.determineResultStateAndReasonFromResultValue(convertBigIntToBigFloat(diff))
+				s, r := oidMonitor.determineResultStateAndReasonFromResultValue(convertBigIntToBigFloat(diff))
+				if s.Overrides(resultState) {
+					resultState, resultReason = s, r
+				}
 			}
 		} else {
 			var value *big.Float

@@ -266,6 +266,84 @@ func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 			wantReasonCode:  "FOO2_MIN",
 		},
 		{
+			name: "counter64_warn_after_an_ok",
+			check: check.Check{LastResult: check.NewResult(check.StateOk, "", []check.ResultMetric{
+				{
+					Label: "foo2",
+					Value: "1000000",
+					Type:  check.ResultMetricCounter,
+				},
+			})},
+			snmpObjects: []snmp.Object{
+				{
+					Type:  snmp.Uinteger32,
+					Value: uint32(100),
+					Oid:   "1.2.3.4.5.6.7.8",
+				},
+				{
+					Type:  snmp.Counter64,
+					Value: uint64(1000100),
+					Oid:   "1.2.3.4.5.6.7.9",
+				},
+			},
+			oidMonitors: []OidMonitor{
+				{
+					Oid:              "1.2.3.4.5.6.7.8",
+					Name:             "foo1",
+					PostProcessValue: 1.0,
+				},
+				{
+					Oid:               "1.2.3.4.5.6.7.9",
+					Name:              "foo2",
+					PostProcessValue:  1.0,
+					CritMinReasonCode: "FOO2_MIN",
+					CritMinThreshold:  101,
+				},
+			},
+			wantResultState: check.StateCrit,
+			wantReasonCode:  "FOO2_MIN",
+		},
+		{
+			name: "counter64_ok_after_a_warn",
+			check: check.Check{LastResult: check.NewResult(check.StateOk, "", []check.ResultMetric{
+				{
+					Label: "foo2",
+					Value: "1000000",
+					Type:  check.ResultMetricCounter,
+				},
+			})},
+			snmpObjects: []snmp.Object{
+				{
+					Type:  snmp.Uinteger32,
+					Value: uint32(100),
+					Oid:   "1.2.3.4.5.6.7.8",
+				},
+				{
+					Type:  snmp.Counter64,
+					Value: uint64(1000100),
+					Oid:   "1.2.3.4.5.6.7.9",
+				},
+			},
+			oidMonitors: []OidMonitor{
+				{
+					Oid:               "1.2.3.4.5.6.7.8",
+					Name:              "foo1",
+					PostProcessValue:  1.0,
+					WarnMaxThreshold:  99,
+					WarnMaxReasonCode: "FOO1_MAX",
+				},
+				{
+					Oid:               "1.2.3.4.5.6.7.9",
+					Name:              "foo2",
+					PostProcessValue:  1.0,
+					CritMinReasonCode: "FOO2_MIN",
+					CritMinThreshold:  50,
+				},
+			},
+			wantResultState: check.StateWarn,
+			wantReasonCode:  "FOO1_MAX",
+		},
+		{
 			name:  "warn_min",
 			check: check.Check{},
 			snmpObjects: []snmp.Object{
@@ -376,6 +454,55 @@ func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 					CritMinReasonCode: "CRIT_MIN",
 					CritMaxThreshold:  1500,
 					CritMaxReasonCode: "CRIT_MAX",
+				},
+			},
+			wantResultState: check.StateOk,
+			wantReasonCode:  "",
+		},
+		{
+			name: "counter64_ok_with_crit_min_and_max_specified",
+			check: check.Check{LastResult: check.NewResult(check.StateOk, "", []check.ResultMetric{
+				{
+					Label: "foo1",
+					Value: "1479408114955",
+					Type:  check.ResultMetricCounter,
+				},
+				{
+					Label: "foo2",
+					Value: "841125226704",
+					Type:  check.ResultMetricCounter,
+				},
+			})},
+			snmpObjects: []snmp.Object{
+				{
+					Type:  snmp.Counter64,
+					Value: uint64(1479408115955),
+					Oid:   ".1.3.6.1.2.1.31.1.1.1.6.40",
+				},
+				{
+					Type:  snmp.Counter64,
+					Value: uint64(841125227704),
+					Oid:   ".1.3.6.1.2.1.31.1.1.1.10.40",
+				},
+			},
+			oidMonitors: []OidMonitor{
+				{
+					Oid:               ".1.3.6.1.2.1.31.1.1.1.6.40",
+					Name:              "foo1",
+					PostProcessValue:  1.0,
+					CritMinThreshold:  1000,
+					CritMinReasonCode: "FOO1_MIN",
+					CritMaxThreshold:  118750000,
+					CritMaxReasonCode: "FOO1_MAX",
+				},
+				{
+					Oid:               ".1.3.6.1.2.1.31.1.1.1.10.40",
+					Name:              "foo2",
+					PostProcessValue:  1.0,
+					CritMinThreshold:  1000,
+					CritMinReasonCode: "FOO1_MIN",
+					CritMaxThreshold:  118750000,
+					CritMaxReasonCode: "FOO1_MAX",
 				},
 			},
 			wantResultState: check.StateOk,
