@@ -6,6 +6,7 @@ import (
 	"github.com/seankndy/gopoller/snmp"
 	"math/big"
 	"strings"
+	"time"
 )
 
 type OidMonitor struct {
@@ -90,6 +91,7 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 		chk.Debugf("oid monitor: %s", c.OidMonitors[k])
 	}
 
+	currentTime := time.Now()
 	objects, err := getter.Get(&c.Host, rawOids)
 	if err != nil {
 		if strings.Contains(err.Error(), "request timeout") {
@@ -145,29 +147,29 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 
 				var lastValue *big.Int
 				if lastMetric != nil {
-					var ok bool
-					lastValue, ok = new(big.Int).SetString(lastMetric.Value, 10)
-					if !ok {
-						lastValue = big.NewInt(0)
+					lastValue, _ = new(big.Int).SetString(lastMetric.Value, 10)
+				}
+
+				// only if we have a last value can we calculate counter differences
+				if lastValue != nil && chk.LastCheck != nil {
+					// calculate the difference between previous and current result value, accounting for rollover
+					var diff *big.Int
+					if object.Type == snmp.Counter64 {
+						diff = snmp.CalculateCounterDiff(lastValue, value, 64)
+					} else {
+						diff = snmp.CalculateCounterDiff(lastValue, value, 32)
 					}
-				} else {
-					lastValue = big.NewInt(0)
-				}
+					timeDiff := new(big.Int).SetInt64(currentTime.Unix())
+					timeDiff.Sub(timeDiff, new(big.Int).SetInt64(chk.LastCheck.Unix()))
+					diff.Div(diff, timeDiff)
 
-				// calculate the difference between previous and current result value, accounting for rollover
-				var diff *big.Int
-				if object.Type == snmp.Counter64 {
-					diff = snmp.CalculateCounterDiff(lastValue, value, 64)
-				} else {
-					diff = snmp.CalculateCounterDiff(lastValue, value, 32)
-				}
+					chk.Debugf("counter oid %s has difference value of %s", object.Oid, diff)
 
-				chk.Debugf("counter oid %s has difference value of %s", object.Oid, diff)
-
-				s, r := oidMonitor.determineResultStateAndReasonFromResultValue(convertBigIntToBigFloat(diff))
-				if s.Overrides(resultState) {
-					chk.Debugf("counter oid %s result state (%s, %s) overrides previous state (%s, %s)", object.Oid, s.String(), r, resultState.String(), resultReason)
-					resultState, resultReason = s, r
+					s, r := oidMonitor.determineResultStateAndReasonFromResultValue(convertBigIntToBigFloat(diff))
+					if s.Overrides(resultState) {
+						chk.Debugf("counter oid %s result state (%s, %s) overrides previous state (%s, %s)", object.Oid, s.String(), r, resultState.String(), resultReason)
+						resultState, resultReason = s, r
+					}
 				}
 			}
 		} else {
