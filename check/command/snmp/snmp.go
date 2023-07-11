@@ -133,8 +133,9 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 			resultMetricType = check.ResultMetricCounter
 			resultMetricValue = value.Text(10)
 
-			// if state is still Unknown, check if this snmp object exceeds any thresholds
-			if resultState == check.StateUnknown {
+			// if state isn't the worst state already (CRIT), then we need to check if this snmp object exceeds any
+			// thresholds as it may be a worse state than what we are so far
+			if resultState != check.StateCrit {
 				// get last metric to calculate difference
 				lastMetric := getChecksLastResultMetricByLabel(chk, oidMonitor.Name)
 				var lastValue *big.Int
@@ -188,7 +189,6 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 			Value: resultMetricValue,
 			Type:  resultMetricType,
 		})
-
 	}
 
 	return check.NewResult(resultState, resultReason, resultMetrics), nil
