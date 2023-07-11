@@ -157,8 +157,11 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 					diff = snmp.CalculateCounterDiff(lastValue, value, 32)
 				}
 
+				chk.Debugf("counter oid %s has difference value of %s", object.Oid, diff)
+
 				s, r := oidMonitor.determineResultStateAndReasonFromResultValue(convertBigIntToBigFloat(diff))
 				if s.Overrides(resultState) {
+					chk.Debugf("counter oid %s has tripped a threshold: %s, %s", object.Oid, s.String(), r)
 					resultState, resultReason = s, r
 				}
 			}
@@ -179,6 +182,7 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 
 			s, r := oidMonitor.determineResultStateAndReasonFromResultValue(value)
 			if s.Overrides(resultState) {
+				chk.Debugf("gauge oid %s has tripped a threshold: %s, %s", object.Oid, s.String(), r)
 				resultState, resultReason = s, r
 			}
 
