@@ -52,8 +52,8 @@ func (m *Queue) Dequeue() *check.Check {
 	}
 
 	// if top-most Check is not due, then nothing is due.
-	check := m.checks[m.minPriority][0]
-	if !check.IsDue() {
+	chk := m.checks[m.minPriority][0]
+	if !chk.IsDue() {
 		return nil
 	}
 
@@ -68,14 +68,13 @@ func (m *Queue) Dequeue() *check.Check {
 		delete(m.checks, m.minPriority)
 
 		m.minPriority = math.MaxInt64
-		for p, _ := range m.priorities {
-			if p < m.minPriority {
-				m.minPriority = p
-			}
+
+		for p := range m.priorities {
+			m.minPriority = min(p, m.minPriority)
 		}
 	}
 
-	return check
+	return chk
 }
 
 func (m *Queue) Flush() {
