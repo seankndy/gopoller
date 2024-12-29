@@ -229,11 +229,11 @@ func (c *Check) runResultHandlerProcessing(result *Result, newIncident *Incident
 		close(errorCh)
 	}()
 
-	var errors error
+	var errs error
 	for err := range errorCh {
-		errors = multierror.Append(errors, err)
+		errs = multierror.Append(errs, err)
 	}
-	return errors
+	return errs
 }
 
 func (c *Check) makeNewIncidentIfJustified(result *Result) *Incident {
