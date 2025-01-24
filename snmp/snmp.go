@@ -66,13 +66,21 @@ type Object struct {
 	Oid   string
 }
 
-// CalculateCounterDiff calculates the difference between lastValue and currentValue, taking into account rollover at nbits unsigned bits
-func CalculateCounterDiff(lastValue *big.Int, currentValue *big.Int, nbits uint8) *big.Int {
-	maxCounterValue := new(big.Int).SetUint64(uint64(1<<nbits - 1))
+// CalculateCounterDiff calculates the difference between lastValue and currentValue, detecting 32bit or 64bit rollover
+func CalculateCounterDiff(lastValue *big.Int, currentValue *big.Int) *big.Int {
 	diff := currentValue.Sub(currentValue, lastValue)
-	if diff.Cmp(big.NewInt(0)) < 0 {
-		diff = diff.Add(diff, maxCounterValue)
+
+	if diff.Sign() == -1 { // negative difference means the counter rolled
+		maxCounter32Value := ToBigInt(uint64((1 << 32) - 1))
+		maxCounter64Value := ToBigInt(uint64((1 << 64) - 1))
+
+		if lastValue.Cmp(maxCounter32Value) >= 0 { // lastValue was larger than a 32bit integer, must be a 64bit rollover
+			diff = diff.Add(diff, maxCounter64Value)
+		} else {
+			diff = diff.Add(diff, maxCounter32Value)
+		}
 	}
+
 	return diff
 }
 

@@ -153,12 +153,7 @@ func (c *Command) Run(chk *check.Check) (*check.Result, error) {
 				// only if we have a last value can we calculate counter differences
 				if lastValue != nil && chk.LastCheck != nil {
 					// calculate the difference between previous and current result value, accounting for rollover
-					var diff *big.Int
-					if object.Type == snmp.Counter64 {
-						diff = snmp.CalculateCounterDiff(lastValue, value, 64)
-					} else {
-						diff = snmp.CalculateCounterDiff(lastValue, value, 32)
-					}
+					diff := snmp.CalculateCounterDiff(lastValue, value)
 					timeDiff := new(big.Int).SetInt64(currentTime.Unix())
 					timeDiff.Sub(timeDiff, new(big.Int).SetInt64(chk.LastCheck.Unix()))
 					diff.Div(diff, timeDiff)
