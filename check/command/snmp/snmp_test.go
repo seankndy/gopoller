@@ -588,6 +588,72 @@ func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 			wantResultState: check.StateCrit,
 			wantReasonCode:  "CRIT_MIN",
 		},
+		{
+			name:  "crit_status_value",
+			check: check.Check{},
+			snmpObjects: []snmp.Object{
+				{
+					Type:  snmp.Uinteger32,
+					Value: uint32(8),
+					Oid:   "1.2.3.4.5.6.7.8",
+				},
+			},
+			oidMonitors: []OidMonitor{
+				{
+					Oid:                  "1.2.3.4.5.6.7.8",
+					Name:                 "foo1",
+					PostProcessValue:     1.0,
+					CritStatusValue:      8,
+					CritStatusReasonCode: "FOO",
+				},
+			},
+			wantResultState: check.StateCrit,
+			wantReasonCode:  "FOO",
+		},
+		{
+			name:  "warn_status_value",
+			check: check.Check{},
+			snmpObjects: []snmp.Object{
+				{
+					Type:  snmp.Gauge32,
+					Value: uint32(8),
+					Oid:   "1.2.3.4.5.6.7.8",
+				},
+			},
+			oidMonitors: []OidMonitor{
+				{
+					Oid:                  "1.2.3.4.5.6.7.8",
+					Name:                 "foo1",
+					PostProcessValue:     1.0,
+					WarnStatusValue:      8,
+					WarnStatusReasonCode: "FOO",
+				},
+			},
+			wantResultState: check.StateWarn,
+			wantReasonCode:  "FOO",
+		},
+		{
+			name:  "ok_status_value",
+			check: check.Check{},
+			snmpObjects: []snmp.Object{
+				{
+					Type:  snmp.Uinteger32,
+					Value: uint32(8),
+					Oid:   "1.2.3.4.5.6.7.8",
+				},
+			},
+			oidMonitors: []OidMonitor{
+				{
+					Oid:                  "1.2.3.4.5.6.7.8",
+					Name:                 "foo1",
+					PostProcessValue:     1.0,
+					CritStatusValue:      9,
+					CritStatusReasonCode: "FOO",
+				},
+			},
+			wantResultState: check.StateOk,
+			wantReasonCode:  "",
+		},
 	}
 
 	for _, tt := range tests {
