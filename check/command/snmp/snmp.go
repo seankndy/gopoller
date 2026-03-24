@@ -29,10 +29,10 @@ type OidMonitor struct {
 
 	// WarnStatus and CritStatus are for status OIDs that return fixed values indicating a state (example: ifStatus)
 	WarnStatusReasonCode string
-	WarnStatusValue      float64
+	WarnStatusValues     []float64
 
 	CritStatusReasonCode string
-	CritStatusValue      float64
+	CritStatusValues     []float64
 }
 
 func NewOidMonitor(oid, name string) *OidMonitor {
@@ -44,11 +44,21 @@ func NewOidMonitor(oid, name string) *OidMonitor {
 }
 
 func (m OidMonitor) determineResultStateAndReasonFromResultValue(value *big.Float) (check.ResultState, string) {
-	if m.CritStatusReasonCode != "" && value.Cmp(big.NewFloat(m.CritStatusValue)) == 0 {
-		return check.StateCrit, m.CritStatusReasonCode
-	} else if m.WarnStatusReasonCode != "" && value.Cmp(big.NewFloat(m.WarnStatusValue)) == 0 {
-		return check.StateWarn, m.WarnStatusReasonCode
-	} else if m.CritMinReasonCode != "" && value.Cmp(big.NewFloat(m.CritMinThreshold)) < 0 {
+	if m.CritStatusReasonCode != "" {
+		for _, v := range m.CritStatusValues {
+			if value.Cmp(big.NewFloat(v)) == 0 {
+				return check.StateCrit, m.CritStatusReasonCode
+			}
+		}
+	}
+	if m.WarnStatusReasonCode != "" {
+		for _, v := range m.WarnStatusValues {
+			if value.Cmp(big.NewFloat(v)) == 0 {
+				return check.StateWarn, m.WarnStatusReasonCode
+			}
+		}
+	}
+	if m.CritMinReasonCode != "" && value.Cmp(big.NewFloat(m.CritMinThreshold)) < 0 {
 		return check.StateCrit, m.CritMinReasonCode
 	} else if m.WarnMinReasonCode != "" && value.Cmp(big.NewFloat(m.WarnMinThreshold)) < 0 {
 		return check.StateWarn, m.WarnMinReasonCode

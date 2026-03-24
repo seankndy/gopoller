@@ -603,7 +603,7 @@ func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 					Oid:                  "1.2.3.4.5.6.7.8",
 					Name:                 "foo1",
 					PostProcessValue:     1.0,
-					CritStatusValue:      8,
+					CritStatusValues:     []float64{8},
 					CritStatusReasonCode: "FOO",
 				},
 			},
@@ -625,7 +625,7 @@ func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 					Oid:                  "1.2.3.4.5.6.7.8",
 					Name:                 "foo1",
 					PostProcessValue:     1.0,
-					WarnStatusValue:      8,
+					WarnStatusValues:     []float64{8},
 					WarnStatusReasonCode: "FOO",
 				},
 			},
@@ -647,12 +647,56 @@ func TestMetricValuesTrippingConfiguredThresholds(t *testing.T) {
 					Oid:                  "1.2.3.4.5.6.7.8",
 					Name:                 "foo1",
 					PostProcessValue:     1.0,
-					CritStatusValue:      9,
+					CritStatusValues:     []float64{9},
 					CritStatusReasonCode: "FOO",
 				},
 			},
 			wantResultState: check.StateOk,
 			wantReasonCode:  "",
+		},
+		{
+			name:  "crit_status_values_multiple",
+			check: check.Check{},
+			snmpObjects: []snmp.Object{
+				{
+					Type:  snmp.Uinteger32,
+					Value: uint32(3),
+					Oid:   "1.2.3.4.5.6.7.8",
+				},
+			},
+			oidMonitors: []OidMonitor{
+				{
+					Oid:                  "1.2.3.4.5.6.7.8",
+					Name:                 "foo1",
+					PostProcessValue:     1.0,
+					CritStatusValues:     []float64{2, 3, 8},
+					CritStatusReasonCode: "FOO",
+				},
+			},
+			wantResultState: check.StateCrit,
+			wantReasonCode:  "FOO",
+		},
+		{
+			name:  "warn_status_values_multiple",
+			check: check.Check{},
+			snmpObjects: []snmp.Object{
+				{
+					Type:  snmp.Gauge32,
+					Value: uint32(5),
+					Oid:   "1.2.3.4.5.6.7.8",
+				},
+			},
+			oidMonitors: []OidMonitor{
+				{
+					Oid:                  "1.2.3.4.5.6.7.8",
+					Name:                 "foo1",
+					PostProcessValue:     1.0,
+					WarnStatusValues:     []float64{4, 5, 6},
+					WarnStatusReasonCode: "FOO",
+				},
+			},
+			wantResultState: check.StateWarn,
+			wantReasonCode:  "FOO",
 		},
 	}
 
